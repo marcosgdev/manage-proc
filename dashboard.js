@@ -22,7 +22,8 @@ class DashboardManager {
         this.funcionarios = [];
         this.filtros = {
             periodo: 30,
-            unidade: ''
+            unidade: '',
+            tipoProcesso: ''
         };
         this.filtrosPopulados = false;
     }
@@ -33,7 +34,7 @@ class DashboardManager {
     async initialize() {
         await this.carregarDados();
         this.setupEventListeners();
-        this.popularFiltroUnidades();
+        this.popularFiltros();
         this.atualizarDados();
     }
 
@@ -100,20 +101,35 @@ class DashboardManager {
             this.filtros.unidade = e.target.value;
             this.atualizarDados();
         });
+
+        // Filtro de tipo de processo
+        document.getElementById('filterTipoProcesso')?.addEventListener('change', (e) => {
+            this.filtros.tipoProcesso = e.target.value;
+            this.atualizarDados();
+        });
     }
 
     /**
-     * Popula filtro de unidades (só uma vez)
+     * Popula filtros de unidades e tipo de processo (só uma vez)
      */
-    popularFiltroUnidades() {
-        const select = document.getElementById('filterUnidade');
-        if (!select || this.filtrosPopulados) return;
+    popularFiltros() {
+        if (this.filtrosPopulados) return;
 
-        // Usa a lista de OPCOES.UNIDADE_EXECUTORA do config.js
-        const unidades = OPCOES.UNIDADE_EXECUTORA || [];
+        // Filtro de unidade
+        const selectUnidade = document.getElementById('filterUnidade');
+        if (selectUnidade) {
+            const unidades = OPCOES.UNIDADE_EXECUTORA || [];
+            selectUnidade.innerHTML = '<option value="">Todas as Unidades</option>' +
+                unidades.map(u => `<option value="${u}">${u}</option>`).join('');
+        }
 
-        select.innerHTML = '<option value="">Todas as Unidades</option>' +
-            unidades.map(u => `<option value="${u}">${u}</option>`).join('');
+        // Filtro de tipo de processo
+        const selectTipo = document.getElementById('filterTipoProcesso');
+        if (selectTipo) {
+            const tipos = OPCOES.TIPO_COTACAO || [];
+            selectTipo.innerHTML = '<option value="">Todos os Tipos</option>' +
+                tipos.map(t => `<option value="${t}">${t}</option>`).join('');
+        }
 
         this.filtrosPopulados = true;
     }
@@ -167,6 +183,11 @@ class DashboardManager {
             processos = processos.filter(p => p.unidadeExecutora === this.filtros.unidade);
         }
 
+        // Filtro de tipo de processo
+        if (this.filtros.tipoProcesso) {
+            processos = processos.filter(p => p.tipoCotacao === this.filtros.tipoProcesso);
+        }
+
         return processos;
     }
 
@@ -188,6 +209,11 @@ class DashboardManager {
         // Filtro de unidade
         if (this.filtros.unidade) {
             processos = processos.filter(p => p.unidadeExecutora === this.filtros.unidade);
+        }
+
+        // Filtro de tipo de processo
+        if (this.filtros.tipoProcesso) {
+            processos = processos.filter(p => p.tipoCotacao === this.filtros.tipoProcesso);
         }
 
         return processos;
@@ -270,10 +296,13 @@ class DashboardManager {
         const container = document.getElementById('processosCriticos');
         if (!container) return;
 
-        // Aplica filtro de unidade aos processos críticos também
+        // Aplica filtros aos processos críticos também
         let processosBase = [...this.processosAndamento];
         if (this.filtros.unidade) {
             processosBase = processosBase.filter(p => p.unidadeExecutora === this.filtros.unidade);
+        }
+        if (this.filtros.tipoProcesso) {
+            processosBase = processosBase.filter(p => p.tipoCotacao === this.filtros.tipoProcesso);
         }
 
         // Filtra processos com prazo próximo (<=5 dias) ou vencido
@@ -290,7 +319,7 @@ class DashboardManager {
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-state-icon">✅</div>
-                    <p class="empty-state-text">Nenhum processo crítico no momento${this.filtros.unidade ? ' para esta unidade' : ''}</p>
+                    <p class="empty-state-text">Nenhum processo crítico no momento${this.filtros.unidade || this.filtros.tipoProcesso ? ' para os filtros selecionados' : ''}</p>
                 </div>
             `;
             return;
