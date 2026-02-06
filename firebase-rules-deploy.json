@@ -1,0 +1,120 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "usuarios": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && ($uid === auth.uid || root.child('usuarios').child(auth.uid).child('role').val() === 'gestor')",
+        ".validate": "newData.hasChildren(['email', 'role'])",
+        "email": {
+          ".validate": "newData.isString() && newData.val().contains('@')"
+        },
+        "nome": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+        },
+        "role": {
+          ".write": "root.child('usuarios').child(auth.uid).child('role').val() === 'gestor'",
+          ".validate": "newData.isString() && (newData.val() === 'gestor' || newData.val() === 'usuario')"
+        },
+        "criadoEm": {
+          ".validate": "newData.isString()"
+        }
+      }
+    },
+
+    "funcionarios": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('usuarios').child(auth.uid).child('role').val() === 'gestor'",
+      "$funcionarioId": {
+        ".validate": "newData.hasChildren(['nome', 'contato', 'vinculo'])",
+        "nome": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+        },
+        "contato": {
+          ".validate": "newData.isString() && newData.val().length <= 150"
+        },
+        "vinculo": {
+          ".validate": "newData.isString() && (newData.val() === 'Colaborador' || newData.val() === 'Servidor' || newData.val() === 'Estagiário' || newData.val() === 'Terceirizado')"
+        }
+      }
+    },
+
+    "processosAndamento": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('usuarios').child(auth.uid).child('role').val() === 'gestor'",
+      "$processoId": {
+        ".validate": "newData.hasChildren(['sigadoc', 'descricao', 'responsavel', 'tipoCotacao', 'tipoObjeto'])",
+        "sigadoc": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 50"
+        },
+        "descricao": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 1000"
+        },
+        "responsavel": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "tipoCotacao": {
+          ".validate": "newData.isString()"
+        },
+        "tipoObjeto": {
+          ".validate": "newData.isString()"
+        },
+        "grauComplexidade": {
+          ".validate": "newData.isString() && (newData.val() === 'BAIXO' || newData.val() === 'MÉDIO' || newData.val() === 'ALTO' || newData.val() === 'MUITO ALTO')"
+        },
+        "quantidadeItens": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "status": {
+          ".validate": "newData.isString()"
+        },
+        "link": {
+          ".validate": "!newData.exists() || newData.isString()"
+        },
+        "dataInicio": {
+          ".validate": "newData.isString()"
+        },
+        "dataFinal": {
+          ".validate": "!newData.exists() || newData.isString()"
+        },
+        "unidadeExecutora": {
+          ".validate": "newData.isString()"
+        }
+      }
+    },
+
+    "processosFinalizados": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('usuarios').child(auth.uid).child('role').val() === 'gestor'",
+      "$processoId": {
+        ".validate": "newData.hasChildren(['sigadoc', 'descricao', 'responsavel'])",
+        "sigadoc": {
+          ".validate": "newData.isString()"
+        },
+        "descricao": {
+          ".validate": "newData.isString()"
+        },
+        "responsavel": {
+          ".validate": "newData.isString()"
+        },
+        "dataFinalizacao": {
+          ".validate": "newData.isString()"
+        },
+        "diasCorridos": {
+          ".validate": "newData.isNumber()"
+        },
+        "diasUteis": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+
+    "listasValidacao": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('usuarios').child(auth.uid).child('role').val() === 'gestor'"
+    }
+  }
+}

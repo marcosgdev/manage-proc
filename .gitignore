@@ -1,0 +1,37 @@
+# Diretórios do Claude Code
+.claude/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDEs e editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Cache
+.cache/
+
+# Node (caso use no futuro)
+node_modules/
+
+# Variáveis de ambiente (caso use)
+.env
+.env.local
+.env.*.local
+
+# Build outputs (caso use no futuro)
+dist/
+build/

@@ -1,0 +1,221 @@
+/*
+ * Estilos de Autenticação e Controle de Papel
+ * Login overlay, formulário, badges, gestor-only
+ */
+
+/* ===== Login Overlay ===== */
+#loginOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.4s ease;
+}
+
+#loginOverlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ===== Login Card ===== */
+.login-card {
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 440px;
+    text-align: center;
+}
+
+.login-logo span {
+    display: block;
+}
+
+.login-card h1 {
+    font-size: 1.4rem;
+    color: #1e293b;
+    margin-top: 10px;
+    font-weight: 700;
+}
+
+.login-card h2 {
+    font-size: 1.3rem;
+    color: #1e293b;
+    margin: 24px 0 8px;
+    font-weight: 600;
+}
+
+.login-card p.login-subtitle {
+    font-size: 0.88rem;
+    color: #94a3b8;
+    margin-bottom: 24px;
+}
+
+/* ===== Form Inputs ===== */
+.login-group {
+    margin-bottom: 18px;
+    text-align: left;
+}
+
+.login-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #475569;
+    margin-bottom: 6px;
+}
+
+.login-group input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: 'Inter', sans-serif;
+    color: #0f172a;
+    background: #ffffff;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.login-group input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.login-group input::placeholder {
+    color: #94a3b8;
+}
+
+/* ===== Submit Button ===== */
+.btn-login {
+    width: 100%;
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    color: #ffffff;
+    border: none;
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: transform 150ms ease, box-shadow 150ms ease;
+    margin-top: 8px;
+}
+
+.btn-login:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+.btn-login:active {
+    transform: translateY(0);
+}
+
+/* ===== Error Message ===== */
+.login-error {
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: left;
+    display: none;
+    margin-bottom: 16px;
+}
+
+.login-error.visible {
+    display: block;
+}
+
+/* ===== Toggle Login / Cadastro ===== */
+.login-toggle {
+    margin-top: 22px;
+    font-size: 0.92rem;
+    color: #64748b;
+}
+
+.login-toggle a {
+    color: #2563eb;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.login-toggle a:hover {
+    text-decoration: underline;
+}
+
+/* ===== Role Badge (header) ===== */
+.role-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 8px;
+}
+
+.role-badge.gestor {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.role-badge.usuario {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+/* ===== Gestor-Only Gating ===== */
+.gestor-only.hidden {
+    display: none !important;
+}
+
+/* ===== Usuários Section ===== */
+.usuarios-section {
+    margin-top: var(--spacing-2xl);
+}
+
+.usuarios-section h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-lg);
+}
+
+.role-select {
+    padding: 6px 10px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: border-color 150ms ease;
+}
+
+.role-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.role-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ===== Responsive Login ===== */
+@media (max-width: 480px) {
+    .login-card {
+        margin: 20px;
+        padding: 32px 24px;
+    }
+}

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão de Acervo Processual</title>
+    <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="components.css">
+    <link rel="stylesheet" href="auth.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Login Overlay -->
+    <div id="loginOverlay">
+        <div class="login-card">
+            <div class="login-logo">
+                <span style="font-size:2.8rem;">📊</span>
+                <h1>Sistema de Gestão Processual</h1>
+            </div>
+            <h2 id="loginTitle">Faça seu Login</h2>
+            <p class="login-subtitle">Acesso ao sistema de controle processual</p>
+            <div class="login-error" id="loginError"></div>
+
+            <!-- Formulário Login -->
+            <form id="formLogin">
+                <div class="login-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="seu@email.com" required>
+                </div>
+                <div class="login-group">
+                    <label>Senha</label>
+                    <input type="password" id="loginSenha" placeholder="Sua senha" required>
+                </div>
+                <button type="submit" class="btn-login">Entrar</button>
+            </form>
+
+            <!-- Formulário Cadastro (oculto por padrão) -->
+            <form id="formSignup" style="display:none;">
+                <div class="login-group">
+                    <label>Email</label>
+                    <input type="email" id="signupEmail" placeholder="seu@email.com" required>
+                </div>
+                <div class="login-group">
+                    <label>Senha</label>
+                    <input type="password" id="signupSenha" placeholder="Mínimo 6 caracteres" required minlength="6">
+                </div>
+                <button type="submit" class="btn-login">Cadastrar</button>
+            </form>
+
+            <div class="login-toggle">
+                Não tem conta? <a id="linkCadastro">Cadastre-se</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">📊</span>
+                    <h1>Sistema de Gestão Processual</h1>
+                </div>
+                <nav class="nav">
+                    <button class="nav-btn active" data-section="dashboard">Dashboard</button>
+                    <button class="nav-btn" data-section="processos">Processos</button>
+                    <button class="nav-btn nav-restricted" data-section="equipe" data-tooltip="Disponível apenas para Gestor">Equipe</button>
+                    <button class="nav-btn" data-section="relatorios">Relatórios</button>
+                    <button class="nav-btn nav-restricted" data-section="usuarios" data-tooltip="Disponível apenas para Gestor">Usuários</button>
+                </nav>
+                <div class="user-profile">
+                    <span class="user-name">Gestor</span>
+                    <button class="logout-btn" id="logoutBtn">Sair</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="section active">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Dashboard de Produtividade</h2>
+                    <div class="filters">
+                        <select id="filterPeriodo" class="filter-select">
+                            <option value="7">Últimos 7 dias</option>
+                            <option value="30" selected>Últimos 30 dias</option>
+                            <option value="90">Últimos 90 dias</option>
+                            <option value="365">Último ano</option>
+                        </select>
+                        <select id="filterUnidade" class="filter-select">
+                            <option value="">Todas as Unidades</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon">📋</div>
+                        <div class="kpi-content">
+                            <h3>Processos em Andamento</h3>
+                            <p class="kpi-value" id="kpiAndamento">0</p>
+                            <span class="kpi-subtitle">Total ativo</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-icon">✅</div>
+                        <div class="kpi-content">
+                            <h3>Processos Finalizados</h3>
+                            <p class="kpi-value" id="kpiFinalizados">0</p>
+                            <span class="kpi-subtitle">Último mês</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-icon">⏱️</div>
+                        <div class="kpi-content">
+                            <h3>Tempo Médio</h3>
+                            <p class="kpi-value" id="kpiTempoMedio">0</p>
+                            <span class="kpi-subtitle">Dias para conclusão</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-icon">👥</div>
+                        <div class="kpi-content">
+                            <h3>Equipe Ativa</h3>
+                            <p class="kpi-value" id="kpiEquipe">0</p>
+                            <span class="kpi-subtitle">Colaboradores</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1 -->
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <h3>Processos por Tipo de Cotação</h3>
+                        <canvas id="chartTipoCotacao"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Processos por Status</h3>
+                        <canvas id="chartStatus"></canvas>
+                    </div>
+                </div>
+
+                <!-- Charts Row 2 -->
+                <div class="charts-row">
+                    <div class="chart-card chart-full">
+                        <h3>Evolução de Processos ao Longo do Tempo</h3>
+                        <canvas id="chartEvolucao"></canvas>
+                    </div>
+                </div>
+
+                <!-- Charts Row 3 -->
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <h3>Produtividade por Responsável</h3>
+                        <canvas id="chartProdutividade"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Complexidade dos Processos</h3>
+                        <canvas id="chartComplexidade"></canvas>
+                    </div>
+                </div>
+
+                <!-- Processos Críticos -->
+                <div class="alert-section">
+                    <h3>⚠️ Processos Críticos (Próximos do Prazo)</h3>
+                    <div id="processosCriticos" class="processos-criticos-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Processos Section -->
+        <section id="processos" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Gestão de Processos</h2>
+                    <button class="btn-primary gestor-only" id="btnNovoProcesso">+ Novo Processo</button>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="andamento">Em Andamento</button>
+                    <button class="tab-btn" data-tab="finalizados">Finalizados</button>
+                </div>
+
+                <div class="search-filters">
+                    <input type="text" id="searchProcesso" class="search-input" placeholder="Buscar por SIGADOC, descrição ou responsável...">
+                    <select id="filterTipoCotacao" class="filter-select">
+                        <option value="">Todos os Tipos</option>
+                    </select>
+                    <select id="filterResponsavel" class="filter-select">
+                        <option value="">Todos os Responsáveis</option>
+                    </select>
+                </div>
+
+                <div id="andamento" class="tab-content active">
+                    <div id="processosAndamentoTable" class="table-container"></div>
+                </div>
+
+                <div id="finalizados" class="tab-content">
+                    <div id="processosFinalizadosTable" class="table-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Equipe Section -->
+        <section id="equipe" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Gestão de Equipe</h2>
+                    <button class="btn-primary gestor-only" id="btnNovoFuncionario">+ Adicionar Membro</button>
+                </div>
+
+                <div class="team-grid" id="teamGrid"></div>
+
+                <div class="team-performance">
+                    <h3>Performance Individual</h3>
+                    <div id="performanceTable" class="table-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Relatórios Section -->
+        <section id="relatorios" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Relatórios e Análises</h2>
+                    <button class="btn-primary" id="btnExportarRelatorio">📥 Exportar Relatório</button>
+                </div>
+
+                <div class="report-filters">
+                    <label>
+                        Período:
+                        <input type="date" id="reportDateStart" class="input-date">
+                    </label>
+                    <label>
+                        até
+                        <input type="date" id="reportDateEnd" class="input-date">
+                    </label>
+                    <button class="btn-secondary" id="btnGerarRelatorio">Gerar Relatório</button>
+                </div>
+
+                <div class="report-summary" id="reportSummary"></div>
+
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <h3>Análise por Unidade Executora</h3>
+                        <canvas id="chartUnidade"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Tipos de Objeto</h3>
+                        <canvas id="chartTipoObjeto"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Usuários Section -->
+        <section id="usuarios" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Gerenciamento de Usuários</h2>
+                </div>
+                <div id="usuariosTable" class="table-container"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal para Novo Processo -->
+    <div id="modalProcesso" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2 id="modalTitle">Novo Processo</h2>
+            <form id="formProcesso">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>SIGADOC*</label>
+                        <input type="text" id="inputSigadoc" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Link</label>
+                        <input type="url" id="inputLink">
+                    </div>
+                    <div class="form-group">
+                        <label>Data Início*</label>
+                        <input type="date" id="inputDataInicio" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Prazo Final</label>
+                        <input type="date" id="inputDataFinal">
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Cotação*</label>
+                        <select id="inputTipoCotacao" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Objeto*</label>
+                        <select id="inputTipoObjeto" required></select>
+                    </div>
+                    <div class="form-group form-full">
+                        <label>Descrição*</label>
+                        <textarea id="inputDescricao" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Responsável*</label>
+                        <select id="inputResponsavel" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Grau de Complexidade*</label>
+                        <select id="inputComplexidade" required>
+                            <option value="BAIXO">Baixo</option>
+                            <option value="MÉDIO">Médio</option>
+                            <option value="ALTO">Alto</option>
+                            <option value="MUITO ALTO">Muito Alto</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantidade de Itens*</label>
+                        <input type="number" id="inputQuantidadeItens" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Unidade Executora*</label>
+                        <select id="inputUnidadeExecutora" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status*</label>
+                        <select id="inputStatus" required></select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="btnCancelar">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Funcionário -->
+    <div id="modalFuncionario" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2>Adicionar Membro da Equipe</h2>
+            <form id="formFuncionario">
+                <div class="form-group">
+                    <label>Nome*</label>
+                    <input type="text" id="inputNome" required>
+                </div>
+                <div class="form-group">
+                    <label>Contato (Email)*</label>
+                    <input type="email" id="inputContato" required>
+                </div>
+                <div class="form-group">
+                    <label>Vínculo*</label>
+                    <select id="inputVinculo" required>
+                        <option value="Colaborador">Colaborador</option>
+                        <option value="Servidor">Servidor</option>
+                        <option value="Estagiário">Estagiário</option>
+                        <option value="Terceirizado">Terceirizado</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="btnCancelarFunc">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Carregando...</p>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Configuração do Firebase (SUBSTITUA COM SUAS CREDENCIAIS)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzfIPSXww8X04jyqPLVlyixLFYU_DrHvM",
+            authDomain: "manager-proc.firebaseapp.com",
+            databaseURL: "https://manager-proc-default-rtdb.firebaseio.com",
+            projectId: "manager-proc",
+            storageBucket: "manager-proc.firebasestorage.app",
+            messagingSenderId: "1096563005192",
+            appId: "1:1096563005192:web:807d6042b782726cbe7ebd"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        window.database = getDatabase(app);
+        window.auth = getAuth(app);
+    </script>
+
+    <!-- Scripts da Aplicação -->
+    <script type="module" src="auth.js"></script>
+    <script type="module" src="login.js"></script>
+    <script type="module" src="config.js"></script>
+    <script type="module" src="database.js"></script>
+    <script type="module" src="utils.js"></script>
+    <script type="module" src="charts.js"></script>
+    <script type="module" src="processos.js"></script>
+    <script type="module" src="equipe.js"></script>
+    <script type="module" src="relatorios.js"></script>
+    <script type="module" src="dashboard.js"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>

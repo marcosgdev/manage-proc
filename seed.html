@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seed — Dados de Teste</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: white; border-radius: 20px; padding: 40px;
+            max-width: 600px; width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .card h1 { font-size: 1.8rem; color: #1e293b; margin-bottom: 8px; }
+        .card p  { color: #64748b; margin-bottom: 24px; font-size: 0.95rem; }
+        #btnSeed {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white; border: none; padding: 14px 32px;
+            border-radius: 12px; font-size: 1.05rem; font-weight: 600;
+            cursor: pointer; width: 100%; transition: opacity 0.2s;
+        }
+        #btnSeed:hover { opacity: 0.88; }
+        #btnSeed:disabled { background: #94a3b8; cursor: not-allowed; }
+        #seedLog {
+            margin-top: 20px; background: #f1f5f9; border-radius: 12px;
+            padding: 16px; min-height: 120px; max-height: 320px;
+            overflow-y: auto; white-space: pre-wrap; font-family: monospace;
+            font-size: 0.85rem; color: #334155;
+            display: none;
+        }
+        #seedLog.visible { display: block; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🌱 Seed de Dados</h1>
+        <p>Popula o Firebase com 3 usuários, 5 funcionários e 10 processos de teste.<br>
+           Credenciais dos usuários: senha <strong>Senha123!</strong></p>
+        <button id="btnSeed">Executar Seed</button>
+        <div id="seedLog"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, push }                            from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getAuth, createUserWithEmailAndPassword, signOut }       from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // ---------------------------------------------------------------------------
+        // Dados
+        // ---------------------------------------------------------------------------
+        const USUARIOS = [
+            { email: 'gestor@empresa.com',   nome: 'Carlos Silva',  role: 'gestor'  },
+            { email: 'usuario1@empresa.com', nome: 'Ana Oliveira',  role: 'usuario' },
+            { email: 'usuario2@empresa.com', nome: 'Pedro Santos',  role: 'usuario' }
+        ];
+        const SENHA = 'Senha123!';
+
+        const FUNCIONARIOS = [
+            { nome: 'Ana Oliveira',     contato: 'ana.oliveira@empresa.com',      vinculo: 'Servidor'     },
+            { nome: 'Pedro Santos',     contato: 'pedro.santos@empresa.com',     vinculo: 'Colaborador'  },
+            { nome: 'Mariana Costa',    contato: 'mariana.costa@empresa.com',    vinculo: 'Estagiário'   },
+            { nome: 'Lucas Ferreira',   contato: 'lucas.ferreira@empresa.com',   vinculo: 'Terceirizado' },
+            { nome: 'Fernanda Almeida', contato: 'fernanda.almeida@empresa.com', vinculo: 'Servidor'     }
+        ];
+
+        const PROCESSOS_ANDAMENTO = [
+            { sigadoc:'20240187', link:'', dataInicio:'2025-11-10', dataFinal:'2026-03-15', tipoCotacao:'LICITAÇÃO',          tipoObjeto:'SERVIÇO',     descricao:'Contratação de serviços de manutenção predial para o bloco administrativo central.', responsavel:'Ana Oliveira',     grauComplexidade:'ALTO',      quantidadeItens:12, unidadeExecutora:'Diretoria de Gestão',              status:'Em Andamento' },
+            { sigadoc:'20240234', link:'', dataInicio:'2025-11-22', dataFinal:'2026-02-28', tipoCotacao:'DISPENSA',           tipoObjeto:'MATERIAL',    descricao:'Aquisição de materiais de expediente para todos os departamentos.',                  responsavel:'Pedro Santos',     grauComplexidade:'BAIXO',     quantidadeItens:45, unidadeExecutora:'Setor de Compras',                 status:'Aguardando Aprovação' },
+            { sigadoc:'20240301', link:'', dataInicio:'2025-12-05', dataFinal:'2026-04-10', tipoCotacao:'LICITAÇÃO',          tipoObjeto:'OBRA',        descricao:'Reforma e ampliação da sala de reuniões do bloco B.',                                  responsavel:'Mariana Costa',    grauComplexidade:'MUITO ALTO',quantidadeItens:8,  unidadeExecutora:'Engenharia Civil',                status:'Em Elaboração' },
+            { sigadoc:'20240378', link:'', dataInicio:'2025-12-18', dataFinal:'2026-05-02', tipoCotacao:'AJUSTES CONTRATUAIS',tipoObjeto:'EQUIPAMENTO', descricao:'Reajuste contratual para fornecimento de equipamentos de informática.',               responsavel:'Lucas Ferreira',   grauComplexidade:'MÉDIO',     quantidadeItens:20, unidadeExecutora:'TI — Tecnologia da Informação',     status:'Validação Orçamento' },
+            { sigadoc:'20240412', link:'', dataInicio:'2026-01-08', dataFinal:'2026-03-30', tipoCotacao:'DISPENSA',           tipoObjeto:'SERVIÇO',     descricao:'Contratação de consultoria jurídica para análise de contratos pendentes.',         responsavel:'Fernanda Almeida', grauComplexidade:'ALTO',      quantidadeItens:3,  unidadeExecutora:'Diretoria Jurídica',              status:'Em Análise Jurídica' },
+            { sigadoc:'20240456', link:'', dataInicio:'2026-01-20', dataFinal:'2026-04-25', tipoCotacao:'LEVANTAMENTO',       tipoObjeto:'MATERIAL',    descricao:'Levantamento e aquisição de materiais para renovação do laboratório.',            responsavel:'Ana Oliveira',     grauComplexidade:'MÉDIO',     quantidadeItens:30, unidadeExecutora:'Laboratório Central',              status:'Em Andamento' }
+        ];
+
+        const PROCESSOS_FINALIZADOS = [
+            { sigadoc:'20231892', link:'', dataInicio:'2025-07-02', dataFinal:'2025-09-10', dataEntrega:'2025-08-29', diasDecorridos:58, tipoCotacao:'LICITAÇÃO',          tipoObjeto:'SERVIÇO',     descricao:'Contratação de serviços de limpeza para instalações administrativas.',                responsavel:'Pedro Santos',   grauComplexidade:'BAIXO', quantidadeItens:5,  unidadeExecutora:'Facilities Management', status:'Finalizado', finalizadoEm:'2025-08-29' },
+            { sigadoc:'20231945', link:'', dataInicio:'2025-07-15', dataFinal:'2025-10-05', dataEntrega:'2025-09-28', diasDecorridos:75, tipoCotacao:'DISPENSA',           tipoObjeto:'EQUIPAMENTO', descricao:'Aquisição de equipamentos de segurança para o estacionamento.',                        responsavel:'Ana Oliveira',   grauComplexidade:'MÉDIO', quantidadeItens:10, unidadeExecutora:'Segurança Patrimonial',  status:'Finalizado', finalizadoEm:'2025-09-28' },
+            { sigadoc:'20232011', link:'', dataInicio:'2025-08-01', dataFinal:'2025-11-15', dataEntrega:'2025-10-22', diasDecorridos:82, tipoCotacao:'LICITAÇÃO',          tipoObjeto:'OBRA',        descricao:'Reforma dos banheiros do bloco A — obras hidráulicas e elétricas.',                      responsavel:'Lucas Ferreira', grauComplexidade:'ALTO',  quantidadeItens:15, unidadeExecutora:'Engenharia Civil',       status:'Finalizado', finalizadoEm:'2025-10-22' },
+            { sigadoc:'20232078', link:'', dataInicio:'2025-08-20', dataFinal:'2025-11-30', dataEntrega:'2025-11-14', diasDecorridos:86, tipoCotacao:'AJUSTES CONTRATUAIS',tipoObjeto:'SERVIÇO',     descricao:'Reajuste do contrato de fornecimento de café e lanches para o refeitório.',             responsavel:'Mariana Costa', grauComplexidade:'BAIXO', quantidadeItens:2,  unidadeExecutora:'Administração Geral',   status:'Finalizado', finalizadoEm:'2025-11-14' }
+        ];
+
+        // ---------------------------------------------------------------------------
+        // Helpers
+        // ---------------------------------------------------------------------------
+        const logEl = document.getElementById('seedLog');
+        function log(msg) {
+            logEl.textContent += msg + '\n';
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log('[SEED]', msg);
+        }
+
+        // ---------------------------------------------------------------------------
+        // Execução
+        // ---------------------------------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzfIPSXww8X04jyqPLVlyixLFYU_DrHvM",
+            authDomain: "manager-proc.firebaseapp.com",
+            databaseURL: "https://manager-proc-default-rtdb.firebaseio.com",
+            projectId: "manager-proc",
+            storageBucket: "manager-proc.firebasestorage.app",
+            messagingSenderId: "1096563005192",
+            appId: "1:1096563005192:web:807d6042b782726cbe7ebd"
+        };
+
+        document.getElementById('btnSeed').addEventListener('click', async () => {
+            const btn = document.getElementById('btnSeed');
+            btn.disabled = true;
+            logEl.classList.add('visible');
+            logEl.textContent = 'Iniciando seed...\n';
+
+            try {
+                const app  = initializeApp(firebaseConfig, 'seed-' + Date.now());
+                const db   = getDatabase(app);
+                const auth = getAuth(app);
+
+                await signOut(auth);
+                log('✓ Sessão limpa.');
+
+                // 1. Usuários Auth + registro no DB
+                log('--- Criando usuários Auth ---');
+                for (const u of USUARIOS) {
+                    try {
+                        const cred = await createUserWithEmailAndPassword(auth, u.email, SENHA);
+                        await set(ref(db, `usuarios/${cred.user.uid}`), {
+                            email: u.email,
+                            nome:  u.nome,
+                            role:  u.role,
+                            criadoEm: new Date().toISOString()
+                        });
+                        log(`✓ Usuário criado: ${u.email} (${u.role})`);
+                        await signOut(auth);
+                    } catch (err) {
+                        if (err.code === 'auth/email-already-in-use') {
+                            log(`⚠ Usuário já existe: ${u.email}`);
+                        } else {
+                            log(`✗ Erro ao criar ${u.email}: ${err.message}`);
+                        }
+                    }
+                }
+
+                // 2. Funcionários
+                log('--- Criando funcionários ---');
+                for (const f of FUNCIONARIOS) {
+                    await push(ref(db, 'funcionarios'), f);
+                    log(`✓ Funcionário: ${f.nome}`);
+                }
+
+                // 3. Processos em andamento
+                log('--- Criando processos em andamento ---');
+                for (const p of PROCESSOS_ANDAMENTO) {
+                    await push(ref(db, 'processosAndamento'), p);
+                    log(`✓ Processo andamento: ${p.sigadoc}`);
+                }
+
+                // 4. Processos finalizados
+                log('--- Criando processos finalizados ---');
+                for (const p of PROCESSOS_FINALIZADOS) {
+                    await push(ref(db, 'processosFinalizados'), p);
+                    log(`✓ Processo finalizado: ${p.sigadoc}`);
+                }
+
+                log('');
+                log('=== Seed concluído com sucesso! ===');
+            } catch (err) {
+                log('✗ Erro inesperado: ' + err.message);
+            }
+
+            btn.disabled = false;
+        });
+    </script>
+</body>
+</html>
