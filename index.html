@@ -234,7 +234,10 @@
             <div class="container">
                 <div class="section-header">
                     <h2>Relatórios e Análises</h2>
-                    <button class="btn-primary" id="btnExportarRelatorio">📥 Exportar Relatório</button>
+                    <div class="header-actions">
+                        <button class="btn-secondary" id="btnExportarRelatorio">📥 Exportar CSV</button>
+                        <button class="btn-primary" id="btnExportarPDF">📄 Exportar PDF</button>
+                    </div>
                 </div>
 
                 <div class="report-filters">
@@ -283,7 +286,7 @@
             <form id="formProcesso">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>SIGADOC*</label>
+                        <label>Número do Processo*</label>
                         <input type="text" id="inputSigadoc" required>
                     </div>
                     <div class="form-group">
@@ -380,6 +383,10 @@
         <div class="spinner"></div>
         <p>Carregando...</p>
     </div>
+
+    <!-- jsPDF para exportação de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
 
     <!-- Firebase SDK -->
     <script type="module">

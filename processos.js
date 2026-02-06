@@ -460,7 +460,7 @@ class ProcessosManager {
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>SIGADOC</th>
+                        <th>Nº Processo</th>
                         <th>Descrição</th>
                         <th>Tipo</th>
                         <th>Responsável</th>
@@ -515,7 +515,7 @@ class ProcessosManager {
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>SIGADOC</th>
+                        <th>Nº Processo</th>
                         <th>Descrição</th>
                         <th>Tipo</th>
                         <th>Responsável</th>

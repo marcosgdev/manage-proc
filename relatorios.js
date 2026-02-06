@@ -63,9 +63,14 @@ class RelatoriosManager {
             this.gerarRelatorio();
         });
 
-        // Botão exportar relatório
+        // Botão exportar relatório CSV
         document.getElementById('btnExportarRelatorio')?.addEventListener('click', () => {
             this.exportarRelatorio();
+        });
+
+        // Botão exportar relatório PDF
+        document.getElementById('btnExportarPDF')?.addEventListener('click', () => {
+            this.exportarRelatorioPDF();
         });
 
         // Inputs de data
@@ -280,7 +285,7 @@ class RelatoriosManager {
 
             // Prepara dados para exportação
             const dadosExport = processos.map(p => ({
-                'SIGADOC': p.sigadoc,
+                'Nº Processo': p.sigadoc,
                 'Data Início': formatarData(p.dataInicio),
                 'Data Final': formatarData(p.dataFinal),
                 'Tipo Cotação': p.tipoCotacao,
@@ -300,6 +305,128 @@ class RelatoriosManager {
         } catch (error) {
             console.error('Erro ao exportar relatório:', error);
             showNotification('Erro ao exportar relatório', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    /**
+     * Exporta relatório para PDF
+     */
+    async exportarRelatorioPDF() {
+        showLoading();
+        try {
+            await this.carregarDados();
+            const processos = this.filtrarProcessosPorPeriodo();
+
+            if (processos.length === 0) {
+                showNotification('Nenhum processo para exportar', 'warning');
+                hideLoading();
+                return;
+            }
+
+            // Verifica se jsPDF está disponível
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                showNotification('Biblioteca PDF não carregada. Recarregue a página.', 'error');
+                hideLoading();
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape', 'mm', 'a4');
+
+            // Título do relatório
+            doc.setFontSize(18);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Relatório de Processos', 14, 20);
+
+            // Período
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            const periodo = `Período: ${formatarData(this.filtroDataInicio)} a ${formatarData(this.filtroDataFim)}`;
+            doc.text(periodo, 14, 28);
+
+            // Data de geração
+            const dataGeracao = `Gerado em: ${formatarData(new Date().toISOString().split('T')[0])}`;
+            doc.text(dataGeracao, 14, 34);
+
+            // Resumo estatístico
+            const totalProcessos = processos.length;
+            const finalizados = processos.filter(p =>
+                this.processosFinalizados.some(pf => pf.id === p.id)
+            ).length;
+            const emAndamento = totalProcessos - finalizados;
+
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Resumo:', 14, 44);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.text(`Total: ${totalProcessos} | Finalizados: ${finalizados} | Em Andamento: ${emAndamento}`, 14, 50);
+
+            // Prepara dados para a tabela
+            const tableData = processos.map(p => [
+                p.sigadoc || '-',
+                (p.descricao || '').substring(0, 50) + ((p.descricao || '').length > 50 ? '...' : ''),
+                p.tipoCotacao || '-',
+                p.responsavel || '-',
+                formatarData(p.dataInicio) || '-',
+                p.status || 'Finalizado',
+                p.grauComplexidade || '-'
+            ]);
+
+            // Cria tabela usando autoTable
+            doc.autoTable({
+                startY: 56,
+                head: [['Nº Processo', 'Descrição', 'Tipo Cotação', 'Responsável', 'Data Início', 'Status', 'Complexidade']],
+                body: tableData,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [37, 99, 235],
+                    textColor: 255,
+                    fontSize: 9,
+                    fontStyle: 'bold'
+                },
+                bodyStyles: {
+                    fontSize: 8
+                },
+                alternateRowStyles: {
+                    fillColor: [245, 247, 250]
+                },
+                columnStyles: {
+                    0: { cellWidth: 30 },
+                    1: { cellWidth: 70 },
+                    2: { cellWidth: 35 },
+                    3: { cellWidth: 35 },
+                    4: { cellWidth: 25 },
+                    5: { cellWidth: 35 },
+                    6: { cellWidth: 25 }
+                },
+                margin: { left: 14, right: 14 }
+            });
+
+            // Rodapé
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150);
+                doc.text(
+                    `Página ${i} de ${pageCount} - Sistema de Gestão de Acervo Processual`,
+                    doc.internal.pageSize.getWidth() / 2,
+                    doc.internal.pageSize.getHeight() - 10,
+                    { align: 'center' }
+                );
+            }
+
+            // Salva o PDF
+            const nomeArquivo = `relatorio_processos_${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(nomeArquivo);
+
+            showNotification('Relatório PDF gerado com sucesso!', 'success');
+        } catch (error) {
+            console.error('Erro ao exportar PDF:', error);
+            showNotification('Erro ao gerar PDF: ' + error.message, 'error');
         } finally {
             hideLoading();
         }
