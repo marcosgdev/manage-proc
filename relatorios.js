@@ -478,7 +478,6 @@ class RelatoriosManager {
             hideLoading();
         }
     }
-}
 
     /**
      * Abre modal para configurar API Key da OpenAI
