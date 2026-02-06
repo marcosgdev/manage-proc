@@ -56,6 +56,13 @@ export const OPCOES = {
     ]
 };
 
+// Configuração da OpenAI (para recursos de IA)
+// ATENÇÃO: Em produção, use uma função serverless para proteger a API key
+export const OPENAI_CONFIG = {
+    apiKey: '', // Configure sua API key aqui ou via localStorage
+    model: 'gpt-4o-mini' // Modelo econômico e rápido
+};
+
 // Cores para gráficos (mesma paleta do projeto)
 export const CHART_COLORS = {
     primary: '#2563eb',

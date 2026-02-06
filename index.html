@@ -255,6 +255,22 @@
                     <button class="btn-secondary" id="btnGerarRelatorio">Gerar Relatório</button>
                 </div>
 
+                <!-- Seção de IA -->
+                <div class="ia-section">
+                    <div class="ia-header">
+                        <h3>Análise com Inteligência Artificial</h3>
+                        <div class="ia-actions">
+                            <button class="btn-ia" id="btnResumoIA" title="Gerar resumo executivo com IA">
+                                🤖 Gerar Resumo IA
+                            </button>
+                            <button class="btn-ia-config" id="btnConfigurarIA" title="Configurar API Key da OpenAI">
+                                ⚙️
+                            </button>
+                        </div>
+                    </div>
+                    <div id="resumoIAContainer" class="hidden"></div>
+                </div>
+
                 <div class="report-summary" id="reportSummary"></div>
 
                 <div class="charts-row">
@@ -420,6 +436,7 @@
     <script type="module" src="database.js"></script>
     <script type="module" src="utils.js"></script>
     <script type="module" src="charts.js"></script>
+    <script type="module" src="openai.js"></script>
     <script type="module" src="processos.js"></script>
     <script type="module" src="equipe.js"></script>
     <script type="module" src="relatorios.js"></script>

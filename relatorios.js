@@ -5,7 +5,9 @@
 
 import dbManager from './database.js';
 import chartManager from './charts.js';
-import { 
+import openaiManager from './openai.js';
+import { OPENAI_CONFIG } from './config.js';
+import {
     formatarData,
     exportarParaCSV,
     calcularMedia,
@@ -21,6 +23,7 @@ class RelatoriosManager {
         this.processosFinalizados = [];
         this.filtroDataInicio = null;
         this.filtroDataFim = null;
+        this.resumoIA = null; // Armazena o último resumo gerado pela IA
     }
 
     /**
@@ -30,6 +33,18 @@ class RelatoriosManager {
         await this.carregarDados();
         this.setupEventListeners();
         this.setDatasPadrao();
+        this.configurarOpenAI();
+    }
+
+    /**
+     * Configura a API da OpenAI
+     */
+    configurarOpenAI() {
+        // Tenta carregar a API key do localStorage ou do config
+        const apiKey = localStorage.getItem('openai_api_key') || OPENAI_CONFIG.apiKey;
+        if (apiKey) {
+            openaiManager.setApiKey(apiKey);
+        }
     }
 
     /**
@@ -71,6 +86,16 @@ class RelatoriosManager {
         // Botão exportar relatório PDF
         document.getElementById('btnExportarPDF')?.addEventListener('click', () => {
             this.exportarRelatorioPDF();
+        });
+
+        // Botão gerar resumo com IA
+        document.getElementById('btnResumoIA')?.addEventListener('click', () => {
+            this.gerarResumoIA();
+        });
+
+        // Botão configurar API Key
+        document.getElementById('btnConfigurarIA')?.addEventListener('click', () => {
+            this.configurarApiKey();
         });
 
         // Inputs de data
@@ -312,8 +337,9 @@ class RelatoriosManager {
 
     /**
      * Exporta relatório para PDF
+     * @param {boolean} incluirResumoIA - Se true, inclui o resumo da IA no PDF
      */
-    async exportarRelatorioPDF() {
+    async exportarRelatorioPDF(incluirResumoIA = false) {
         showLoading();
         try {
             await this.carregarDados();
@@ -364,6 +390,27 @@ class RelatoriosManager {
             doc.setFontSize(10);
             doc.text(`Total: ${totalProcessos} | Finalizados: ${finalizados} | Em Andamento: ${emAndamento}`, 14, 50);
 
+            let startY = 56;
+
+            // Inclui resumo da IA se disponível e solicitado
+            if (incluirResumoIA && this.resumoIA) {
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Análise Executiva (IA):', 14, startY);
+                startY += 6;
+
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+
+                // Quebra o texto em linhas
+                const maxWidth = 270; // Largura máxima em mm
+                const lines = doc.splitTextToSize(this.resumoIA, maxWidth);
+                doc.text(lines, 14, startY);
+
+                // Calcula a altura usada pelo texto
+                startY += lines.length * 4 + 10;
+            }
+
             // Prepara dados para a tabela
             const tableData = processos.map(p => [
                 p.sigadoc || '-',
@@ -377,7 +424,7 @@ class RelatoriosManager {
 
             // Cria tabela usando autoTable
             doc.autoTable({
-                startY: 56,
+                startY: startY,
                 head: [['Nº Processo', 'Descrição', 'Tipo Cotação', 'Responsável', 'Data Início', 'Status', 'Complexidade']],
                 body: tableData,
                 theme: 'grid',
@@ -430,6 +477,134 @@ class RelatoriosManager {
         } finally {
             hideLoading();
         }
+    }
+}
+
+    /**
+     * Abre modal para configurar API Key da OpenAI
+     */
+    configurarApiKey() {
+        const apiKeyAtual = localStorage.getItem('openai_api_key') || '';
+        const novaApiKey = prompt(
+            'Digite sua API Key da OpenAI:\n\n' +
+            '(Obtenha em: https://platform.openai.com/api-keys)\n\n' +
+            'A chave será armazenada localmente no seu navegador.',
+            apiKeyAtual
+        );
+
+        if (novaApiKey !== null) {
+            if (novaApiKey.trim()) {
+                localStorage.setItem('openai_api_key', novaApiKey.trim());
+                openaiManager.setApiKey(novaApiKey.trim());
+                showNotification('API Key configurada com sucesso!', 'success');
+            } else {
+                localStorage.removeItem('openai_api_key');
+                openaiManager.setApiKey(null);
+                showNotification('API Key removida', 'info');
+            }
+        }
+    }
+
+    /**
+     * Gera resumo executivo com IA
+     */
+    async gerarResumoIA() {
+        if (!openaiManager.isConfigured()) {
+            const configurar = confirm(
+                'API Key da OpenAI não configurada.\n\n' +
+                'Deseja configurar agora?'
+            );
+            if (configurar) {
+                this.configurarApiKey();
+            }
+            return;
+        }
+
+        showLoading();
+        try {
+            await this.carregarDados();
+            const processos = this.filtrarProcessosPorPeriodo();
+
+            if (processos.length === 0) {
+                showNotification('Nenhum processo para analisar', 'warning');
+                hideLoading();
+                return;
+            }
+
+            // Prepara dados para a IA
+            const totalProcessos = processos.length;
+            const finalizados = processos.filter(p =>
+                this.processosFinalizados.some(pf => pf.id === p.id)
+            ).length;
+            const emAndamento = totalProcessos - finalizados;
+
+            const processosComTempo = this.processosFinalizados.filter(p => p.diasDecorridos);
+            const tempoMedio = processosComTempo.length > 0
+                ? Math.round(calcularMedia(processosComTempo, 'diasDecorridos'))
+                : 0;
+
+            const porTipo = contarOcorrencias(processos, 'tipoCotacao');
+            const porUnidade = contarOcorrencias(processos, 'unidadeExecutora');
+            const porComplexidade = contarOcorrencias(processos, 'grauComplexidade');
+
+            const periodo = `${formatarData(this.filtroDataInicio)} a ${formatarData(this.filtroDataFim)}`;
+
+            // Gera o resumo
+            const resumo = await openaiManager.gerarResumoExecutivo({
+                totalProcessos,
+                finalizados,
+                emAndamento,
+                tempoMedio,
+                porTipo,
+                porUnidade,
+                porComplexidade,
+                periodo
+            });
+
+            this.resumoIA = resumo;
+            this.exibirResumoIA(resumo);
+            showNotification('Resumo gerado com sucesso!', 'success');
+
+        } catch (error) {
+            console.error('Erro ao gerar resumo:', error);
+            showNotification('Erro ao gerar resumo: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    /**
+     * Exibe o resumo da IA na interface
+     */
+    exibirResumoIA(resumo) {
+        const container = document.getElementById('resumoIAContainer');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="resumo-ia-card">
+                <div class="resumo-ia-header">
+                    <h4>Resumo Executivo (IA)</h4>
+                    <span class="resumo-ia-badge">Gerado por IA</span>
+                </div>
+                <div class="resumo-ia-content">
+                    ${resumo.split('\n').map(p => p.trim() ? `<p>${p}</p>` : '').join('')}
+                </div>
+                <div class="resumo-ia-footer">
+                    <small>Gerado em ${new Date().toLocaleString('pt-BR')}</small>
+                </div>
+            </div>
+        `;
+        container.classList.remove('hidden');
+    }
+
+    /**
+     * Exporta relatório para PDF com resumo da IA (se disponível)
+     */
+    async exportarRelatorioPDFComIA() {
+        if (!this.resumoIA) {
+            await this.gerarResumoIA();
+        }
+        await this.exportarRelatorioPDF(true);
     }
 }
 
