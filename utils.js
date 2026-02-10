@@ -5,10 +5,27 @@
 
 /**
  * Formata data no padrão brasileiro (DD/MM/YYYY)
+ * Trata corretamente datas no formato YYYY-MM-DD sem problemas de timezone
  */
 export function formatarData(data) {
     if (!data) return '-';
+
+    // Se for string no formato YYYY-MM-DD, faz parse manual para evitar timezone
+    if (typeof data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data)) {
+        const [ano, mes, dia] = data.split('-');
+        return `${dia}/${mes}/${ano}`;
+    }
+
+    // Se for string ISO com T (datetime), extrai apenas a data
+    if (typeof data === 'string' && data.includes('T')) {
+        const [dataParte] = data.split('T');
+        const [ano, mes, dia] = dataParte.split('-');
+        return `${dia}/${mes}/${ano}`;
+    }
+
+    // Fallback para outros formatos
     const d = new Date(data);
+    if (isNaN(d.getTime())) return '-';
     const dia = String(d.getDate()).padStart(2, '0');
     const mes = String(d.getMonth() + 1).padStart(2, '0');
     const ano = d.getFullYear();
@@ -30,11 +47,25 @@ export function formatarDataHora(data) {
 }
 
 /**
- * Converte data ISO para formato de input date
+ * Converte data ISO para formato de input date (YYYY-MM-DD)
+ * Trata corretamente sem problemas de timezone
  */
 export function isoParaInputDate(isoDate) {
     if (!isoDate) return '';
+
+    // Se já estiver no formato YYYY-MM-DD, retorna diretamente
+    if (typeof isoDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+        return isoDate;
+    }
+
+    // Se for ISO datetime, extrai apenas a parte da data
+    if (typeof isoDate === 'string' && isoDate.includes('T')) {
+        return isoDate.split('T')[0];
+    }
+
+    // Fallback
     const d = new Date(isoDate);
+    if (isNaN(d.getTime())) return '';
     const ano = d.getFullYear();
     const mes = String(d.getMonth() + 1).padStart(2, '0');
     const dia = String(d.getDate()).padStart(2, '0');
@@ -43,10 +74,27 @@ export function isoParaInputDate(isoDate) {
 
 /**
  * Calcula dias entre duas datas
+ * Trata corretamente datas no formato YYYY-MM-DD sem problemas de timezone
  */
 export function calcularDias(dataInicio, dataFim) {
-    const inicio = new Date(dataInicio);
-    const fim = new Date(dataFim);
+    const parseData = (data) => {
+        if (typeof data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data)) {
+            const [ano, mes, dia] = data.split('-').map(Number);
+            return new Date(ano, mes - 1, dia);
+        }
+        if (typeof data === 'string' && data.includes('T')) {
+            const [dataParte] = data.split('T');
+            const [ano, mes, dia] = dataParte.split('-').map(Number);
+            return new Date(ano, mes - 1, dia);
+        }
+        return new Date(data);
+    };
+
+    const inicio = parseData(dataInicio);
+    const fim = parseData(dataFim);
+
+    if (isNaN(inicio.getTime()) || isNaN(fim.getTime())) return 0;
+
     const diffTime = Math.abs(fim - inicio);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
@@ -54,13 +102,33 @@ export function calcularDias(dataInicio, dataFim) {
 
 /**
  * Calcula dias para o prazo (negativo se vencido)
+ * Trata corretamente datas no formato YYYY-MM-DD sem problemas de timezone
  */
 export function diasParaPrazo(dataFinal) {
     if (!dataFinal) return null;
+
+    // Data de hoje (meia-noite local)
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
-    const prazo = new Date(dataFinal);
-    prazo.setHours(0, 0, 0, 0);
+
+    let prazo;
+
+    // Se for string no formato YYYY-MM-DD, cria data local manualmente
+    if (typeof dataFinal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dataFinal)) {
+        const [ano, mes, dia] = dataFinal.split('-').map(Number);
+        prazo = new Date(ano, mes - 1, dia); // mes é 0-indexed
+    } else if (typeof dataFinal === 'string' && dataFinal.includes('T')) {
+        // Se for ISO datetime, extrai apenas a data
+        const [dataParte] = dataFinal.split('T');
+        const [ano, mes, dia] = dataParte.split('-').map(Number);
+        prazo = new Date(ano, mes - 1, dia);
+    } else {
+        prazo = new Date(dataFinal);
+        prazo.setHours(0, 0, 0, 0);
+    }
+
+    if (isNaN(prazo.getTime())) return null;
+
     const diffTime = prazo - hoje;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
