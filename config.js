@@ -63,6 +63,19 @@ export const OPENAI_CONFIG = {
     model: 'gpt-4o-mini' // Modelo econômico e rápido
 };
 
+// Configuração do EmailJS (para notificações por email)
+// Crie uma conta gratuita em: https://www.emailjs.com/
+// Configure os templates no painel do EmailJS
+export const EMAIL_CONFIG = {
+    serviceId: '', // ID do serviço de email (ex: 'service_xxxxx')
+    publicKey: '', // Chave pública do EmailJS (ex: 'user_xxxxx')
+    templates: {
+        novoProcesso: '', // Template ID para novo processo
+        alertaPrazo: '', // Template ID para alerta de prazo
+        processoFinalizado: '' // Template ID para processo finalizado
+    }
+};
+
 // Cores para gráficos (mesma paleta do projeto)
 export const CHART_COLORS = {
     primary: '#2563eb',

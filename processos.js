@@ -5,11 +5,12 @@
 
 import dbManager from './database.js';
 import authManager from './auth.js';
+import emailManager from './email.js';
 import { OPCOES, MESSAGES, DB_PATHS } from './config.js';
-import { 
-    formatarData, 
-    diasParaPrazo, 
-    formatarPrazo, 
+import {
+    formatarData,
+    diasParaPrazo,
+    formatarPrazo,
     getClassePrazo,
     truncar,
     showLoading,
@@ -278,6 +279,16 @@ class ProcessosManager {
             if (resultado.success) {
                 showNotification(MESSAGES.SUCCESS.SAVE, 'success');
                 this.fecharModalProcesso();
+
+                // Envia notificação por email apenas para novos processos
+                if (!this.processoEditando) {
+                    try {
+                        await emailManager.notificarNovoProcesso(dados);
+                    } catch (emailError) {
+                        console.warn('Erro ao enviar email de notificação:', emailError);
+                    }
+                }
+
                 await this.carregarDados();
             } else {
                 showNotification(MESSAGES.ERROR.SAVE, 'error');
@@ -298,9 +309,28 @@ class ProcessosManager {
 
         showLoading();
         try {
+            // Obtém dados do processo antes de finalizar para o email
+            const processoOriginal = this.processosAndamento.find(p => p.id === id);
+
             const resultado = await dbManager.finalizarProcesso(id);
             if (resultado.success) {
                 showNotification('Processo finalizado com sucesso!', 'success');
+
+                // Envia notificação por email
+                if (processoOriginal) {
+                    try {
+                        const processoFinalizado = {
+                            ...processoOriginal,
+                            dataFinalizacao: new Date().toISOString(),
+                            diasCorridos: resultado.diasCorridos || '-',
+                            diasUteis: resultado.diasUteis || '-'
+                        };
+                        await emailManager.notificarProcessoFinalizado(processoFinalizado);
+                    } catch (emailError) {
+                        console.warn('Erro ao enviar email de finalização:', emailError);
+                    }
+                }
+
                 await this.carregarDados();
             } else {
                 showNotification(MESSAGES.ERROR.UPDATE, 'error');

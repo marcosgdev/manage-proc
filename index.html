@@ -293,6 +293,28 @@
                     <h2>Gerenciamento de Usuários</h2>
                 </div>
                 <div id="usuariosTable" class="table-container"></div>
+
+                <!-- Configurações de Email -->
+                <div class="settings-card gestor-only" style="margin-top: 30px;">
+                    <div class="settings-header">
+                        <h3>Configurações de Notificações por Email</h3>
+                        <span id="emailStatus" class="status-badge status-inactive">Não configurado</span>
+                    </div>
+                    <p class="settings-description">
+                        Configure o EmailJS para enviar notificações automáticas sobre novos processos,
+                        alertas de prazo (5 dias e 1 dia) e finalizações.
+                    </p>
+                    <div class="settings-actions">
+                        <button class="btn-secondary" id="btnConfigurarEmail">Configurar EmailJS</button>
+                        <button class="btn-secondary" id="btnTestarEmail" disabled>Testar Envio</button>
+                    </div>
+                    <div class="settings-info">
+                        <small>
+                            Crie uma conta gratuita em <a href="https://www.emailjs.com/" target="_blank">emailjs.com</a>
+                            e configure os templates de email.
+                        </small>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
@@ -397,6 +419,52 @@
         </div>
     </div>
 
+    <!-- Modal para Configuração de Email -->
+    <div id="modalEmail" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2>Configurar Notificações por Email</h2>
+            <form id="formEmail">
+                <div class="form-section">
+                    <h4>Credenciais do EmailJS</h4>
+                    <p class="form-help">Obtenha essas informações no painel do <a href="https://dashboard.emailjs.com/" target="_blank">EmailJS</a>.</p>
+                    <div class="form-group">
+                        <label>Service ID*</label>
+                        <input type="text" id="inputEmailServiceId" placeholder="service_xxxxxxx" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Public Key*</label>
+                        <input type="text" id="inputEmailPublicKey" placeholder="user_xxxxxxxxxxxxxxx" required>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <h4>Templates de Email</h4>
+                    <p class="form-help">Configure 3 templates no EmailJS com as variáveis indicadas.</p>
+                    <div class="form-group">
+                        <label>Template - Novo Processo*</label>
+                        <input type="text" id="inputTemplateNovo" placeholder="template_xxxxxxx" required>
+                        <small>Variáveis: numero_processo, descricao, tipo_cotacao, responsavel, data_inicio, prazo_final, unidade</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Template - Alerta de Prazo*</label>
+                        <input type="text" id="inputTemplateAlerta" placeholder="template_xxxxxxx" required>
+                        <small>Variáveis: urgencia, numero_processo, descricao, dias_restantes, prazo_final, responsavel, mensagem_alerta</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Template - Processo Finalizado*</label>
+                        <input type="text" id="inputTemplateFinalizado" placeholder="template_xxxxxxx" required>
+                        <small>Variáveis: numero_processo, descricao, data_inicio, data_finalizacao, dias_corridos, dias_uteis, responsavel</small>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="btnCancelarEmail">Cancelar</button>
+                    <button type="button" class="btn-danger" id="btnLimparEmail">Limpar Configuração</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="spinner"></div>
@@ -406,6 +474,9 @@
     <!-- jsPDF para exportação de PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- EmailJS para notificações por email -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
     <!-- Firebase SDK -->
     <script type="module">
@@ -437,6 +508,7 @@
     <script type="module" src="utils.js"></script>
     <script type="module" src="charts.js"></script>
     <script type="module" src="openai.js"></script>
+    <script type="module" src="email.js"></script>
     <script type="module" src="processos.js"></script>
     <script type="module" src="equipe.js"></script>
     <script type="module" src="relatorios.js"></script>

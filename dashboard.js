@@ -5,6 +5,7 @@
 
 import dbManager from './database.js';
 import chartManager from './charts.js';
+import emailManager from './email.js';
 import { DB_PATHS, OPCOES } from './config.js';
 import {
     diasParaPrazo,
@@ -12,7 +13,8 @@ import {
     truncar,
     calcularMedia,
     showLoading,
-    hideLoading
+    hideLoading,
+    showNotification
 } from './utils.js';
 
 class DashboardManager {
@@ -36,6 +38,23 @@ class DashboardManager {
         this.setupEventListeners();
         this.popularFiltros();
         this.atualizarDados();
+
+        // Verifica e envia alertas de prazo por email
+        this.verificarAlertasPrazo();
+    }
+
+    /**
+     * Verifica processos com prazo próximo e envia alertas por email
+     */
+    async verificarAlertasPrazo() {
+        try {
+            const alertasEnviados = await emailManager.verificarEEnviarAlertas();
+            if (alertasEnviados > 0) {
+                showNotification(`${alertasEnviados} alerta(s) de prazo enviado(s) por email`, 'info');
+            }
+        } catch (error) {
+            console.warn('Erro ao verificar alertas de prazo:', error);
+        }
     }
 
     /**

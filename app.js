@@ -9,6 +9,7 @@ import dashboardManager from './dashboard.js';
 import processosManager from './processos.js';
 import equipeManager from './equipe.js';
 import relatoriosManager from './relatorios.js';
+import emailManager from './email.js';
 import { hideLoading, showNotification } from './utils.js';
 
 class App {
@@ -54,6 +55,11 @@ class App {
 
             // Configura seção de usuários (só para gestor)
             this.setupUsuarios();
+
+            // Inicializa e configura email
+            await emailManager.initialize();
+            this.setupEmailConfig();
+            this.updateEmailStatus();
 
             // Mostra seção inicial
             this.showSection('dashboard');
@@ -361,6 +367,132 @@ class App {
         `;
 
         container.innerHTML = html;
+    }
+
+    /**
+     * Configura handlers para configuração de email
+     */
+    setupEmailConfig() {
+        const btnConfigurar = document.getElementById('btnConfigurarEmail');
+        const btnTestar = document.getElementById('btnTestarEmail');
+        const btnCancelar = document.getElementById('btnCancelarEmail');
+        const btnLimpar = document.getElementById('btnLimparEmail');
+        const formEmail = document.getElementById('formEmail');
+        const modalEmail = document.getElementById('modalEmail');
+        const modalClose = modalEmail?.querySelector('.modal-close');
+
+        // Abrir modal de configuração
+        btnConfigurar?.addEventListener('click', () => {
+            this.preencherFormEmail();
+            modalEmail?.classList.add('active');
+        });
+
+        // Fechar modal
+        btnCancelar?.addEventListener('click', () => {
+            modalEmail?.classList.remove('active');
+        });
+
+        modalClose?.addEventListener('click', () => {
+            modalEmail?.classList.remove('active');
+        });
+
+        // Limpar configuração
+        btnLimpar?.addEventListener('click', () => {
+            if (confirm('Deseja realmente limpar a configuração de email?')) {
+                emailManager.limparConfiguracao();
+                this.updateEmailStatus();
+                modalEmail?.classList.remove('active');
+                showNotification('Configuração de email removida', 'info');
+            }
+        });
+
+        // Salvar configuração
+        formEmail?.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const serviceId = document.getElementById('inputEmailServiceId').value.trim();
+            const publicKey = document.getElementById('inputEmailPublicKey').value.trim();
+            const templates = {
+                novoProcesso: document.getElementById('inputTemplateNovo').value.trim(),
+                alertaPrazo: document.getElementById('inputTemplateAlerta').value.trim(),
+                processoFinalizado: document.getElementById('inputTemplateFinalizado').value.trim()
+            };
+
+            emailManager.configurar(serviceId, publicKey, templates);
+            this.updateEmailStatus();
+            modalEmail?.classList.remove('active');
+            showNotification('Configuração de email salva com sucesso!', 'success');
+        });
+
+        // Testar envio de email
+        btnTestar?.addEventListener('click', async () => {
+            if (!emailManager.isConfigured()) {
+                showNotification('Configure o EmailJS primeiro', 'warning');
+                return;
+            }
+
+            btnTestar.disabled = true;
+            btnTestar.textContent = 'Enviando...';
+
+            try {
+                const resultado = await emailManager.enviarEmail(
+                    emailManager.templateIds.novoProcesso,
+                    {
+                        numero_processo: 'TESTE-001',
+                        descricao: 'Este é um email de teste do sistema Gestão Processual',
+                        tipo_cotacao: 'DISPENSA DE LICITAÇÃO',
+                        responsavel: 'Sistema',
+                        data_inicio: new Date().toLocaleDateString('pt-BR'),
+                        prazo_final: 'N/A',
+                        unidade: 'Teste',
+                        complexidade: 'BAIXO',
+                        link_sistema: window.location.origin
+                    },
+                    authManager.currentUser?.email || 'teste@teste.com'
+                );
+
+                if (resultado.success) {
+                    showNotification('Email de teste enviado com sucesso!', 'success');
+                } else {
+                    showNotification('Erro ao enviar email: ' + resultado.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Erro ao enviar email de teste', 'error');
+            }
+
+            btnTestar.disabled = false;
+            btnTestar.textContent = 'Testar Envio';
+        });
+    }
+
+    /**
+     * Preenche form de email com valores salvos
+     */
+    preencherFormEmail() {
+        document.getElementById('inputEmailServiceId').value = emailManager.serviceId || '';
+        document.getElementById('inputEmailPublicKey').value = emailManager.publicKey || '';
+        document.getElementById('inputTemplateNovo').value = emailManager.templateIds.novoProcesso || '';
+        document.getElementById('inputTemplateAlerta').value = emailManager.templateIds.alertaPrazo || '';
+        document.getElementById('inputTemplateFinalizado').value = emailManager.templateIds.processoFinalizado || '';
+    }
+
+    /**
+     * Atualiza status de configuração de email na interface
+     */
+    updateEmailStatus() {
+        const statusBadge = document.getElementById('emailStatus');
+        const btnTestar = document.getElementById('btnTestarEmail');
+        const isConfigured = emailManager.isConfigured();
+
+        if (statusBadge) {
+            statusBadge.textContent = isConfigured ? 'Configurado' : 'Não configurado';
+            statusBadge.classList.toggle('status-active', isConfigured);
+            statusBadge.classList.toggle('status-inactive', !isConfigured);
+        }
+
+        if (btnTestar) {
+            btnTestar.disabled = !isConfigured;
+        }
     }
 
     /**
