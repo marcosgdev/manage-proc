@@ -438,22 +438,12 @@
                     </div>
                 </div>
                 <div class="form-section">
-                    <h4>Templates de Email</h4>
-                    <p class="form-help">Configure 3 templates no EmailJS com as variáveis indicadas.</p>
+                    <h4>Template Universal</h4>
+                    <p class="form-help">Use apenas 1 template para todas as notificações (compatível com plano gratuito).</p>
                     <div class="form-group">
-                        <label>Template - Novo Processo*</label>
-                        <input type="text" id="inputTemplateNovo" placeholder="template_xxxxxxx" required>
-                        <small>Variáveis: numero_processo, descricao, tipo_cotacao, responsavel, data_inicio, prazo_final, unidade</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Template - Alerta de Prazo*</label>
-                        <input type="text" id="inputTemplateAlerta" placeholder="template_xxxxxxx" required>
-                        <small>Variáveis: urgencia, numero_processo, descricao, dias_restantes, prazo_final, responsavel, mensagem_alerta</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Template - Processo Finalizado*</label>
-                        <input type="text" id="inputTemplateFinalizado" placeholder="template_xxxxxxx" required>
-                        <small>Variáveis: numero_processo, descricao, data_inicio, data_finalizacao, dias_corridos, dias_uteis, responsavel</small>
+                        <label>Template ID*</label>
+                        <input type="text" id="inputTemplateId" placeholder="template_xxxxxxx" required>
+                        <small>Variáveis: tipo_notificacao, assunto, mensagem_principal, numero_processo, descricao, tipo_cotacao, responsavel, data_info, prazo_info, unidade, info_extra, link_sistema, to_email</small>
                     </div>
                 </div>
                 <div class="form-actions">

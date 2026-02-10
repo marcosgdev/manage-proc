@@ -65,15 +65,11 @@ export const OPENAI_CONFIG = {
 
 // Configuração do EmailJS (para notificações por email)
 // Crie uma conta gratuita em: https://www.emailjs.com/
-// Configure os templates no painel do EmailJS
+// Usa apenas 1 template universal (compatível com plano gratuito - limite de 2 templates)
 export const EMAIL_CONFIG = {
     serviceId: '', // ID do serviço de email (ex: 'service_xxxxx')
     publicKey: '', // Chave pública do EmailJS (ex: 'user_xxxxx')
-    templates: {
-        novoProcesso: '', // Template ID para novo processo
-        alertaPrazo: '', // Template ID para alerta de prazo
-        processoFinalizado: '' // Template ID para processo finalizado
-    }
+    templateId: '' // Template ID universal (1 template para todas as notificações)
 };
 
 // Cores para gráficos (mesma paleta do projeto)

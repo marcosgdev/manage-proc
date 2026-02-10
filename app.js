@@ -412,13 +412,9 @@ class App {
 
             const serviceId = document.getElementById('inputEmailServiceId').value.trim();
             const publicKey = document.getElementById('inputEmailPublicKey').value.trim();
-            const templates = {
-                novoProcesso: document.getElementById('inputTemplateNovo').value.trim(),
-                alertaPrazo: document.getElementById('inputTemplateAlerta').value.trim(),
-                processoFinalizado: document.getElementById('inputTemplateFinalizado').value.trim()
-            };
+            const templateId = document.getElementById('inputTemplateId').value.trim();
 
-            emailManager.configurar(serviceId, publicKey, templates);
+            emailManager.configurar(serviceId, publicKey, templateId);
             this.updateEmailStatus();
             modalEmail?.classList.remove('active');
             showNotification('Configuração de email salva com sucesso!', 'success');
@@ -436,16 +432,18 @@ class App {
 
             try {
                 const resultado = await emailManager.enviarEmail(
-                    emailManager.templateIds.novoProcesso,
                     {
+                        tipo_notificacao: '🧪 TESTE',
+                        assunto: 'Teste de Configuração - Gestão Processual',
+                        mensagem_principal: 'Este é um email de teste do sistema.',
                         numero_processo: 'TESTE-001',
-                        descricao: 'Este é um email de teste do sistema Gestão Processual',
+                        descricao: 'Verificação de configuração do EmailJS',
                         tipo_cotacao: 'DISPENSA DE LICITAÇÃO',
                         responsavel: 'Sistema',
-                        data_inicio: new Date().toLocaleDateString('pt-BR'),
-                        prazo_final: 'N/A',
+                        data_info: new Date().toLocaleDateString('pt-BR'),
+                        prazo_info: '',
                         unidade: 'Teste',
-                        complexidade: 'BAIXO',
+                        info_extra: 'Configuração funcionando corretamente!',
                         link_sistema: window.location.origin
                     },
                     authManager.currentUser?.email || 'teste@teste.com'
@@ -471,9 +469,7 @@ class App {
     preencherFormEmail() {
         document.getElementById('inputEmailServiceId').value = emailManager.serviceId || '';
         document.getElementById('inputEmailPublicKey').value = emailManager.publicKey || '';
-        document.getElementById('inputTemplateNovo').value = emailManager.templateIds.novoProcesso || '';
-        document.getElementById('inputTemplateAlerta').value = emailManager.templateIds.alertaPrazo || '';
-        document.getElementById('inputTemplateFinalizado').value = emailManager.templateIds.processoFinalizado || '';
+        document.getElementById('inputTemplateId').value = emailManager.templateId || '';
     }
 
     /**

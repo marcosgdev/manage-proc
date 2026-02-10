@@ -1,6 +1,7 @@
 /**
  * Módulo de Email
  * Gerencia envio de notificações por email usando EmailJS
+ * Usa um único template universal para economizar no limite do plano gratuito
  */
 
 import { EMAIL_CONFIG } from './config.js';
@@ -12,11 +13,7 @@ class EmailManager {
     constructor() {
         this.initialized = false;
         this.serviceId = null;
-        this.templateIds = {
-            novoProcesso: null,
-            alertaPrazo: null,
-            processoFinalizado: null
-        };
+        this.templateId = null; // Agora usa apenas 1 template
         this.publicKey = null;
     }
 
@@ -27,16 +24,12 @@ class EmailManager {
         // Carrega configurações do localStorage ou config
         this.serviceId = localStorage.getItem('emailjs_service_id') || EMAIL_CONFIG.serviceId;
         this.publicKey = localStorage.getItem('emailjs_public_key') || EMAIL_CONFIG.publicKey;
-        this.templateIds = {
-            novoProcesso: localStorage.getItem('emailjs_template_novo') || EMAIL_CONFIG.templates.novoProcesso,
-            alertaPrazo: localStorage.getItem('emailjs_template_alerta') || EMAIL_CONFIG.templates.alertaPrazo,
-            processoFinalizado: localStorage.getItem('emailjs_template_finalizado') || EMAIL_CONFIG.templates.processoFinalizado
-        };
+        this.templateId = localStorage.getItem('emailjs_template_id') || EMAIL_CONFIG.templateId;
 
         if (this.isConfigured() && window.emailjs) {
             emailjs.init(this.publicKey);
             this.initialized = true;
-            console.log('EmailJS inicializado com sucesso');
+            console.log('✅ EmailJS inicializado com sucesso');
         }
     }
 
@@ -44,10 +37,7 @@ class EmailManager {
      * Verifica se o serviço está configurado
      */
     isConfigured() {
-        return this.serviceId && this.publicKey &&
-               this.templateIds.novoProcesso &&
-               this.templateIds.alertaPrazo &&
-               this.templateIds.processoFinalizado;
+        return this.serviceId && this.publicKey && this.templateId;
     }
 
     /**
@@ -69,20 +59,18 @@ class EmailManager {
     /**
      * Envia email usando EmailJS
      */
-    async enviarEmail(templateId, params, toEmails) {
+    async enviarEmail(params, toEmails) {
         if (!this.initialized || !this.isConfigured()) {
             console.warn('EmailJS não configurado. Email não enviado.');
             return { success: false, error: 'Serviço de email não configurado' };
         }
 
         try {
-            // EmailJS não suporta múltiplos destinatários diretamente
-            // Enviamos para cada email individualmente ou usamos BCC no template
             const emailList = Array.isArray(toEmails) ? toEmails.join(', ') : toEmails;
 
             const response = await emailjs.send(
                 this.serviceId,
-                templateId,
+                this.templateId,
                 {
                     ...params,
                     to_email: emailList,
@@ -90,10 +78,10 @@ class EmailManager {
                 }
             );
 
-            console.log('Email enviado com sucesso:', response);
+            console.log('✅ Email enviado com sucesso:', response);
             return { success: true, response };
         } catch (error) {
-            console.error('Erro ao enviar email:', error);
+            console.error('❌ Erro ao enviar email:', error);
             return { success: false, error: error.text || error.message };
         }
     }
@@ -106,18 +94,21 @@ class EmailManager {
         if (emails.length === 0) return;
 
         const params = {
+            tipo_notificacao: '📋 NOVO PROCESSO',
+            assunto: `Novo Processo: ${processo.sigadoc}`,
+            mensagem_principal: 'Um novo processo foi cadastrado no sistema.',
             numero_processo: processo.sigadoc,
-            descricao: processo.descricao,
-            tipo_cotacao: processo.tipoCotacao,
-            responsavel: processo.responsavel,
-            data_inicio: formatarData(processo.dataInicio),
-            prazo_final: processo.dataFinal ? formatarData(processo.dataFinal) : 'Não definido',
-            unidade: processo.unidadeExecutora,
-            complexidade: processo.grauComplexidade,
+            descricao: processo.descricao || '-',
+            tipo_cotacao: processo.tipoCotacao || '-',
+            responsavel: processo.responsavel || '-',
+            data_info: `Início: ${formatarData(processo.dataInicio)}`,
+            prazo_info: processo.dataFinal ? `Prazo: ${formatarData(processo.dataFinal)}` : '',
+            unidade: processo.unidadeExecutora || '-',
+            info_extra: `Complexidade: ${processo.grauComplexidade || '-'}`,
             link_sistema: window.location.origin
         };
 
-        return await this.enviarEmail(this.templateIds.novoProcesso, params, emails);
+        return await this.enviarEmail(params, emails);
     }
 
     /**
@@ -128,19 +119,21 @@ class EmailManager {
         if (emails.length === 0) return;
 
         const params = {
+            tipo_notificacao: '✅ PROCESSO FINALIZADO',
+            assunto: `Processo Finalizado: ${processo.sigadoc}`,
+            mensagem_principal: 'Um processo foi concluído com sucesso!',
             numero_processo: processo.sigadoc,
-            descricao: processo.descricao,
-            tipo_cotacao: processo.tipoCotacao,
-            responsavel: processo.responsavel,
-            data_inicio: formatarData(processo.dataInicio),
-            data_finalizacao: formatarData(processo.dataFinalizacao || new Date().toISOString()),
-            dias_corridos: processo.diasCorridos || '-',
-            dias_uteis: processo.diasUteis || '-',
-            unidade: processo.unidadeExecutora,
+            descricao: processo.descricao || '-',
+            tipo_cotacao: processo.tipoCotacao || '-',
+            responsavel: processo.responsavel || '-',
+            data_info: `Início: ${formatarData(processo.dataInicio)} | Fim: ${formatarData(processo.dataFinalizacao || new Date().toISOString())}`,
+            prazo_info: `Dias corridos: ${processo.diasCorridos || '-'} | Dias úteis: ${processo.diasUteis || '-'}`,
+            unidade: processo.unidadeExecutora || '-',
+            info_extra: '',
             link_sistema: window.location.origin
         };
 
-        return await this.enviarEmail(this.templateIds.processoFinalizado, params, emails);
+        return await this.enviarEmail(params, emails);
     }
 
     /**
@@ -150,38 +143,38 @@ class EmailManager {
         const emails = await this.getEmailsUsuarios();
         if (emails.length === 0) return;
 
-        const urgencia = diasRestantes <= 1 ? 'URGENTE' : 'ATENÇÃO';
+        const urgencia = diasRestantes <= 1 ? '🚨 URGENTE' : '⚠️ ATENÇÃO';
         const mensagem = diasRestantes <= 1
-            ? 'O prazo vence AMANHÃ!'
-            : `Restam apenas ${diasRestantes} dias para o prazo.`;
+            ? 'O prazo deste processo vence AMANHÃ!'
+            : `Restam apenas ${diasRestantes} dias para o prazo deste processo.`;
 
         const params = {
-            urgencia: urgencia,
+            tipo_notificacao: `${urgencia} - ALERTA DE PRAZO`,
+            assunto: `${urgencia}: Prazo próximo - ${processo.sigadoc}`,
+            mensagem_principal: mensagem,
             numero_processo: processo.sigadoc,
-            descricao: processo.descricao,
-            tipo_cotacao: processo.tipoCotacao,
-            responsavel: processo.responsavel,
-            prazo_final: formatarData(processo.dataFinal),
-            dias_restantes: diasRestantes,
-            mensagem_alerta: mensagem,
-            unidade: processo.unidadeExecutora,
-            status: processo.status,
+            descricao: processo.descricao || '-',
+            tipo_cotacao: processo.tipoCotacao || '-',
+            responsavel: processo.responsavel || '-',
+            data_info: `Prazo Final: ${formatarData(processo.dataFinal)}`,
+            prazo_info: `⏰ ${diasRestantes} dia(s) restante(s)`,
+            unidade: processo.unidadeExecutora || '-',
+            info_extra: `Status atual: ${processo.status || '-'}`,
             link_sistema: window.location.origin
         };
 
-        return await this.enviarEmail(this.templateIds.alertaPrazo, params, emails);
+        return await this.enviarEmail(params, emails);
     }
 
     /**
      * Verifica processos com prazo próximo e envia alertas
-     * Deve ser chamado periodicamente (ex: ao carregar dashboard)
      */
     async verificarEEnviarAlertas() {
-        if (!this.isConfigured()) return;
+        if (!this.isConfigured()) return 0;
 
         try {
             const resultado = await dbManager.getProcessosAndamento();
-            if (!resultado.success) return;
+            if (!resultado.success) return 0;
 
             const processos = resultado.data;
             const alertasEnviados = this.getAlertasEnviados();
@@ -241,7 +234,6 @@ class EmailManager {
      * Salva lista de alertas enviados
      */
     salvarAlertasEnviados(alertas) {
-        // Mantém apenas alertas dos últimos 7 dias para não crescer indefinidamente
         const seteDiasAtras = new Date();
         seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
         const dataLimite = seteDiasAtras.toISOString().split('T')[0];
@@ -255,18 +247,16 @@ class EmailManager {
     }
 
     /**
-     * Configura credenciais do EmailJS
+     * Configura credenciais do EmailJS (versão simplificada - 1 template)
      */
-    configurar(serviceId, publicKey, templates) {
+    configurar(serviceId, publicKey, templateId) {
         localStorage.setItem('emailjs_service_id', serviceId);
         localStorage.setItem('emailjs_public_key', publicKey);
-        localStorage.setItem('emailjs_template_novo', templates.novoProcesso);
-        localStorage.setItem('emailjs_template_alerta', templates.alertaPrazo);
-        localStorage.setItem('emailjs_template_finalizado', templates.processoFinalizado);
+        localStorage.setItem('emailjs_template_id', templateId);
 
         this.serviceId = serviceId;
         this.publicKey = publicKey;
-        this.templateIds = templates;
+        this.templateId = templateId;
 
         if (window.emailjs) {
             emailjs.init(publicKey);
@@ -280,10 +270,11 @@ class EmailManager {
     limparConfiguracao() {
         localStorage.removeItem('emailjs_service_id');
         localStorage.removeItem('emailjs_public_key');
-        localStorage.removeItem('emailjs_template_novo');
-        localStorage.removeItem('emailjs_template_alerta');
-        localStorage.removeItem('emailjs_template_finalizado');
+        localStorage.removeItem('emailjs_template_id');
         this.initialized = false;
+        this.serviceId = null;
+        this.publicKey = null;
+        this.templateId = null;
     }
 }
 
