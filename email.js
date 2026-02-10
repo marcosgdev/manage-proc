@@ -118,6 +118,7 @@ class EmailManager {
             prazo_info: processo.dataFinal ? `Prazo: ${formatarData(processo.dataFinal)}` : '',
             unidade: processo.unidadeExecutora || '-',
             info_extra: `Complexidade: ${processo.grauComplexidade || '-'}`,
+            link_sei: processo.link || '',
             link_sistema: window.location.origin
         };
 
@@ -147,6 +148,7 @@ class EmailManager {
             prazo_info: `Dias corridos: ${processo.diasCorridos || '-'} | Dias úteis: ${processo.diasUteis || '-'}`,
             unidade: processo.unidadeExecutora || '-',
             info_extra: '',
+            link_sei: processo.link || '',
             link_sistema: window.location.origin
         };
 
@@ -181,6 +183,7 @@ class EmailManager {
             prazo_info: `⏰ ${diasRestantes} dia(s) restante(s)`,
             unidade: processo.unidadeExecutora || '-',
             info_extra: `Status atual: ${processo.status || '-'}`,
+            link_sei: processo.link || '',
             link_sistema: window.location.origin
         };
 
