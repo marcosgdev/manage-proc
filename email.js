@@ -1,19 +1,18 @@
 /**
  * Módulo de Email
  * Gerencia envio de notificações por email usando EmailJS
- * Usa um único template universal para economizar no limite do plano gratuito
+ * Envia emails apenas para o responsável do processo (membro da equipe)
  */
 
-import { EMAIL_CONFIG } from './config.js';
+import { EMAIL_CONFIG, DB_PATHS } from './config.js';
 import dbManager from './database.js';
-import authManager from './auth.js';
 import { formatarData, diasParaPrazo } from './utils.js';
 
 class EmailManager {
     constructor() {
         this.initialized = false;
         this.serviceId = null;
-        this.templateId = null; // Agora usa apenas 1 template
+        this.templateId = null;
         this.publicKey = null;
     }
 
@@ -21,7 +20,6 @@ class EmailManager {
      * Inicializa o EmailJS
      */
     async initialize() {
-        // Carrega configurações do localStorage ou config
         this.serviceId = localStorage.getItem('emailjs_service_id') || EMAIL_CONFIG.serviceId;
         this.publicKey = localStorage.getItem('emailjs_public_key') || EMAIL_CONFIG.publicKey;
         this.templateId = localStorage.getItem('emailjs_template_id') || EMAIL_CONFIG.templateId;
@@ -41,44 +39,55 @@ class EmailManager {
     }
 
     /**
-     * Obtém lista de emails dos usuários cadastrados
+     * Busca o email do responsável pelo nome
+     * @param {string} nomeResponsavel - Nome do responsável (membro da equipe)
+     * @returns {string|null} Email do responsável ou null se não encontrado
      */
-    async getEmailsUsuarios() {
+    async getEmailResponsavel(nomeResponsavel) {
+        if (!nomeResponsavel) return null;
+
         try {
-            const usuarios = await authManager.getAllUsers();
-            if (Array.isArray(usuarios)) {
-                return usuarios.map(u => u.email).filter(e => e);
-            }
-            return [];
+            const resultado = await dbManager.getAll(DB_PATHS.FUNCIONARIOS);
+            if (!resultado.success || !resultado.data) return null;
+
+            // Busca o funcionário pelo nome
+            const funcionario = resultado.data.find(f =>
+                f.nome && f.nome.toLowerCase() === nomeResponsavel.toLowerCase()
+            );
+
+            return funcionario?.contato || null;
         } catch (error) {
-            console.error('Erro ao obter emails dos usuários:', error);
-            return [];
+            console.error('Erro ao buscar email do responsável:', error);
+            return null;
         }
     }
 
     /**
      * Envia email usando EmailJS
      */
-    async enviarEmail(params, toEmails) {
+    async enviarEmail(params, toEmail) {
         if (!this.initialized || !this.isConfigured()) {
             console.warn('EmailJS não configurado. Email não enviado.');
             return { success: false, error: 'Serviço de email não configurado' };
         }
 
-        try {
-            const emailList = Array.isArray(toEmails) ? toEmails.join(', ') : toEmails;
+        if (!toEmail) {
+            console.warn('Destinatário não encontrado. Email não enviado.');
+            return { success: false, error: 'Destinatário não encontrado' };
+        }
 
+        try {
             const response = await emailjs.send(
                 this.serviceId,
                 this.templateId,
                 {
                     ...params,
-                    to_email: emailList,
+                    to_email: toEmail,
                     reply_to: 'noreply@gestaoprocessual.com'
                 }
             );
 
-            console.log('✅ Email enviado com sucesso:', response);
+            console.log('✅ Email enviado com sucesso para:', toEmail);
             return { success: true, response };
         } catch (error) {
             console.error('❌ Erro ao enviar email:', error);
@@ -88,15 +97,19 @@ class EmailManager {
 
     /**
      * Notifica sobre novo processo criado
+     * Envia para o responsável assinalado no processo
      */
     async notificarNovoProcesso(processo) {
-        const emails = await this.getEmailsUsuarios();
-        if (emails.length === 0) return;
+        const emailResponsavel = await this.getEmailResponsavel(processo.responsavel);
+        if (!emailResponsavel) {
+            console.warn('Email do responsável não encontrado para:', processo.responsavel);
+            return { success: false, error: 'Email do responsável não encontrado' };
+        }
 
         const params = {
             tipo_notificacao: '📋 NOVO PROCESSO',
-            assunto: `Novo Processo: ${processo.sigadoc}`,
-            mensagem_principal: 'Um novo processo foi cadastrado no sistema.',
+            assunto: `Novo Processo Atribuído: ${processo.sigadoc}`,
+            mensagem_principal: `Você foi designado como responsável por um novo processo.`,
             numero_processo: processo.sigadoc,
             descricao: processo.descricao || '-',
             tipo_cotacao: processo.tipoCotacao || '-',
@@ -108,20 +121,24 @@ class EmailManager {
             link_sistema: window.location.origin
         };
 
-        return await this.enviarEmail(params, emails);
+        return await this.enviarEmail(params, emailResponsavel);
     }
 
     /**
      * Notifica sobre processo finalizado
+     * Envia para o responsável do processo
      */
     async notificarProcessoFinalizado(processo) {
-        const emails = await this.getEmailsUsuarios();
-        if (emails.length === 0) return;
+        const emailResponsavel = await this.getEmailResponsavel(processo.responsavel);
+        if (!emailResponsavel) {
+            console.warn('Email do responsável não encontrado para:', processo.responsavel);
+            return { success: false, error: 'Email do responsável não encontrado' };
+        }
 
         const params = {
             tipo_notificacao: '✅ PROCESSO FINALIZADO',
             assunto: `Processo Finalizado: ${processo.sigadoc}`,
-            mensagem_principal: 'Um processo foi concluído com sucesso!',
+            mensagem_principal: 'O processo sob sua responsabilidade foi concluído com sucesso!',
             numero_processo: processo.sigadoc,
             descricao: processo.descricao || '-',
             tipo_cotacao: processo.tipoCotacao || '-',
@@ -133,20 +150,24 @@ class EmailManager {
             link_sistema: window.location.origin
         };
 
-        return await this.enviarEmail(params, emails);
+        return await this.enviarEmail(params, emailResponsavel);
     }
 
     /**
      * Notifica sobre prazo próximo (5 dias ou 1 dia)
+     * Envia para o responsável do processo
      */
     async notificarAlertaPrazo(processo, diasRestantes) {
-        const emails = await this.getEmailsUsuarios();
-        if (emails.length === 0) return;
+        const emailResponsavel = await this.getEmailResponsavel(processo.responsavel);
+        if (!emailResponsavel) {
+            console.warn('Email do responsável não encontrado para:', processo.responsavel);
+            return { success: false, error: 'Email do responsável não encontrado' };
+        }
 
         const urgencia = diasRestantes <= 1 ? '🚨 URGENTE' : '⚠️ ATENÇÃO';
         const mensagem = diasRestantes <= 1
-            ? 'O prazo deste processo vence AMANHÃ!'
-            : `Restam apenas ${diasRestantes} dias para o prazo deste processo.`;
+            ? 'O prazo do processo sob sua responsabilidade vence AMANHÃ!'
+            : `Restam apenas ${diasRestantes} dias para o prazo do processo sob sua responsabilidade.`;
 
         const params = {
             tipo_notificacao: `${urgencia} - ALERTA DE PRAZO`,
@@ -163,7 +184,7 @@ class EmailManager {
             link_sistema: window.location.origin
         };
 
-        return await this.enviarEmail(params, emails);
+        return await this.enviarEmail(params, emailResponsavel);
     }
 
     /**
@@ -182,7 +203,7 @@ class EmailManager {
             let novosAlertas = [];
 
             for (const processo of processos) {
-                if (!processo.dataFinal) continue;
+                if (!processo.dataFinal || !processo.responsavel) continue;
 
                 const dias = diasParaPrazo(processo.dataFinal);
                 if (dias === null) continue;
@@ -191,8 +212,10 @@ class EmailManager {
                 if (dias === 5) {
                     const chave5dias = `${processo.id}_5dias_${hoje}`;
                     if (!alertasEnviados.includes(chave5dias)) {
-                        await this.notificarAlertaPrazo(processo, 5);
-                        novosAlertas.push(chave5dias);
+                        const result = await this.notificarAlertaPrazo(processo, 5);
+                        if (result.success) {
+                            novosAlertas.push(chave5dias);
+                        }
                     }
                 }
 
@@ -200,8 +223,10 @@ class EmailManager {
                 if (dias === 1) {
                     const chave1dia = `${processo.id}_1dia_${hoje}`;
                     if (!alertasEnviados.includes(chave1dia)) {
-                        await this.notificarAlertaPrazo(processo, 1);
-                        novosAlertas.push(chave1dia);
+                        const result = await this.notificarAlertaPrazo(processo, 1);
+                        if (result.success) {
+                            novosAlertas.push(chave1dia);
+                        }
                     }
                 }
             }
@@ -247,7 +272,7 @@ class EmailManager {
     }
 
     /**
-     * Configura credenciais do EmailJS (versão simplificada - 1 template)
+     * Configura credenciais do EmailJS
      */
     configurar(serviceId, publicKey, templateId) {
         localStorage.setItem('emailjs_service_id', serviceId);
