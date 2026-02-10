@@ -96,6 +96,14 @@ class EmailManager {
     }
 
     /**
+     * Gera HTML formatado do botão do link SEI
+     */
+    gerarBotaoSei(link) {
+        if (!link) return '';
+        return `<a href="${link}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 10px 0;">🔗 Acessar Processo no SEI</a>`;
+    }
+
+    /**
      * Notifica sobre novo processo criado
      * Envia para o responsável assinalado no processo
      */
@@ -119,6 +127,7 @@ class EmailManager {
             unidade: processo.unidadeExecutora || '-',
             info_extra: `Complexidade: ${processo.grauComplexidade || '-'}`,
             link_sei: processo.link || '',
+            link_sei_html: this.gerarBotaoSei(processo.link),
             link_sistema: window.location.origin
         };
 
@@ -149,6 +158,7 @@ class EmailManager {
             unidade: processo.unidadeExecutora || '-',
             info_extra: '',
             link_sei: processo.link || '',
+            link_sei_html: this.gerarBotaoSei(processo.link),
             link_sistema: window.location.origin
         };
 
@@ -184,6 +194,7 @@ class EmailManager {
             unidade: processo.unidadeExecutora || '-',
             info_extra: `Status atual: ${processo.status || '-'}`,
             link_sei: processo.link || '',
+            link_sei_html: this.gerarBotaoSei(processo.link),
             link_sistema: window.location.origin
         };
 
