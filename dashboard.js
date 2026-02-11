@@ -525,6 +525,16 @@ class DashboardManager {
         let totalGeralFinalizados = 0;
         let totalGeralAndamento = 0;
 
+        // Encontra o máximo para calcular proporções das barras
+        let maxMensal = 0;
+        Object.values(membros).forEach(dados => {
+            for (let mes = 0; mes < 12; mes++) {
+                const d = dados.meses[mes] || { finalizados: 0, andamento: 0 };
+                const total = d.finalizados + d.andamento;
+                if (total > maxMensal) maxMensal = total;
+            }
+        });
+
         // Gera linhas da tabela
         let html = '';
         Object.entries(membros).sort((a, b) => a[0].localeCompare(b[0])).forEach(([nome, dados]) => {
@@ -540,29 +550,13 @@ class DashboardManager {
                 totalMembro.finalizados += dadosMes.finalizados;
                 totalMembro.andamento += dadosMes.andamento;
 
-                if (dadosMes.finalizados === 0 && dadosMes.andamento === 0) {
-                    html += `<td class="cell-empty">-</td>`;
-                } else {
-                    html += `<td class="cell-value">`;
-                    if (dadosMes.finalizados > 0) {
-                        html += `<span class="finalizados">${dadosMes.finalizados}</span>`;
-                    }
-                    if (dadosMes.andamento > 0) {
-                        html += `<span class="andamento">(${dadosMes.andamento})</span>`;
-                    }
-                    html += `</td>`;
-                }
+                html += this.renderCelulaProdutividade(dadosMes, maxMensal);
             }
 
             totalGeralFinalizados += totalMembro.finalizados;
             totalGeralAndamento += totalMembro.andamento;
 
-            html += `<td class="total-cell cell-value">`;
-            html += `<span class="finalizados">${totalMembro.finalizados}</span>`;
-            if (totalMembro.andamento > 0) {
-                html += `<span class="andamento">(${totalMembro.andamento})</span>`;
-            }
-            html += `</td>`;
+            html += `<td class="total-cell">${this.renderCelulaTotal(totalMembro)}</td>`;
             html += `</tr>`;
         });
 
@@ -570,26 +564,70 @@ class DashboardManager {
         html += `<tr class="row-total">`;
         html += `<td>TOTAL</td>`;
         for (let mes = 0; mes < 12; mes++) {
-            if (totaisMes[mes].finalizados === 0 && totaisMes[mes].andamento === 0) {
-                html += `<td>-</td>`;
-            } else {
-                html += `<td class="cell-value">`;
-                html += `<span class="finalizados">${totaisMes[mes].finalizados}</span>`;
-                if (totaisMes[mes].andamento > 0) {
-                    html += `<span class="andamento">(${totaisMes[mes].andamento})</span>`;
-                }
-                html += `</td>`;
-            }
+            html += this.renderCelulaProdutividade(totaisMes[mes], maxMensal, true);
         }
-        html += `<td class="total-cell cell-value">`;
-        html += `<span class="finalizados">${totalGeralFinalizados}</span>`;
-        if (totalGeralAndamento > 0) {
-            html += `<span class="andamento">(${totalGeralAndamento})</span>`;
-        }
-        html += `</td>`;
+        html += `<td class="total-cell">${this.renderCelulaTotal({ finalizados: totalGeralFinalizados, andamento: totalGeralAndamento })}</td>`;
         html += `</tr>`;
 
         tbody.innerHTML = html;
+    }
+
+    /**
+     * Renderiza uma célula individual da tabela de produtividade
+     */
+    renderCelulaProdutividade(dados, maxMensal, isTotal = false) {
+        if (dados.finalizados === 0 && dados.andamento === 0) {
+            return `<td class="cell-empty">-</td>`;
+        }
+
+        const total = dados.finalizados + dados.andamento;
+        const percentFin = maxMensal > 0 ? (dados.finalizados / maxMensal) * 100 : 0;
+        const percentAnd = maxMensal > 0 ? (dados.andamento / maxMensal) * 100 : 0;
+
+        const tooltipFin = dados.finalizados > 0 ? `${dados.finalizados} processo${dados.finalizados > 1 ? 's' : ''} finalizado${dados.finalizados > 1 ? 's' : ''}` : '';
+        const tooltipAnd = dados.andamento > 0 ? `${dados.andamento} processo${dados.andamento > 1 ? 's' : ''} em andamento` : '';
+        const tooltipTotal = [tooltipFin, tooltipAnd].filter(t => t).join(' | ');
+
+        let html = `<td class="cell-value" title="${tooltipTotal}">`;
+
+        // Mini barra de progresso
+        html += `<div class="mini-progress">`;
+        if (dados.finalizados > 0) {
+            html += `<div class="mini-bar bar-fin" style="width: ${Math.max(percentFin, 8)}%"></div>`;
+        }
+        if (dados.andamento > 0) {
+            html += `<div class="mini-bar bar-and" style="width: ${Math.max(percentAnd, 8)}%"></div>`;
+        }
+        html += `</div>`;
+
+        // Números com ícones
+        html += `<div class="cell-numbers">`;
+        if (dados.finalizados > 0) {
+            html += `<span class="finalizados" title="${tooltipFin}">✓ ${dados.finalizados}</span>`;
+        }
+        if (dados.andamento > 0) {
+            html += `<span class="andamento" title="${tooltipAnd}">○ ${dados.andamento}</span>`;
+        }
+        html += `</div>`;
+        html += `</td>`;
+
+        return html;
+    }
+
+    /**
+     * Renderiza célula de total (coluna final)
+     */
+    renderCelulaTotal(dados) {
+        const tooltipFin = `${dados.finalizados} processo${dados.finalizados !== 1 ? 's' : ''} finalizado${dados.finalizados !== 1 ? 's' : ''} no ano`;
+        const tooltipAnd = dados.andamento > 0 ? ` | ${dados.andamento} em andamento` : '';
+
+        let html = `<div class="total-display" title="${tooltipFin}${tooltipAnd}">`;
+        html += `<span class="finalizados total-num">✓ ${dados.finalizados}</span>`;
+        if (dados.andamento > 0) {
+            html += `<span class="andamento total-num">○ ${dados.andamento}</span>`;
+        }
+        html += `</div>`;
+        return html;
     }
 
     /**
