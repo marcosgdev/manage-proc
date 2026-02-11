@@ -25,7 +25,8 @@ class DashboardManager {
         this.filtros = {
             periodo: 30,
             unidade: '',
-            tipoProcesso: ''
+            tipoProcesso: '',
+            responsavel: ''
         };
         this.filtrosPopulados = false;
     }
@@ -37,6 +38,7 @@ class DashboardManager {
         await this.carregarDados();
         this.setupEventListeners();
         this.popularFiltros();
+        this.setupProdutividadeMensal();
         this.atualizarDados();
 
         // Verifica e envia alertas de prazo por email
@@ -84,11 +86,13 @@ class DashboardManager {
             // Configura listeners em tempo real
             dbManager.listen(DB_PATHS.PROCESSOS_ANDAMENTO, (data) => {
                 this.processosAndamento = data;
+                this.atualizarFiltroResponsavel();
                 this.atualizarDados();
             });
 
             dbManager.listen(DB_PATHS.PROCESSOS_FINALIZADOS, (data) => {
                 this.processosFinalizados = data;
+                this.atualizarFiltroResponsavel();
                 this.atualizarDados();
             });
 
@@ -126,6 +130,12 @@ class DashboardManager {
             this.filtros.tipoProcesso = e.target.value;
             this.atualizarDados();
         });
+
+        // Filtro de responsável
+        document.getElementById('filterResponsavel')?.addEventListener('change', (e) => {
+            this.filtros.responsavel = e.target.value;
+            this.atualizarDados();
+        });
     }
 
     /**
@@ -150,7 +160,35 @@ class DashboardManager {
                 tipos.map(t => `<option value="${t}">${t}</option>`).join('');
         }
 
+        // Filtro de responsável (preenchido dinamicamente com dados dos processos)
+        this.atualizarFiltroResponsavel();
+
         this.filtrosPopulados = true;
+    }
+
+    /**
+     * Atualiza filtro de responsável com dados únicos dos processos
+     */
+    atualizarFiltroResponsavel() {
+        const selectResponsavel = document.getElementById('filterResponsavel');
+        if (!selectResponsavel) return;
+
+        // Coleta responsáveis únicos de ambas as listas
+        const todosProcessos = [...this.processosAndamento, ...this.processosFinalizados];
+        const responsaveisUnicos = [...new Set(
+            todosProcessos
+                .map(p => p.responsavel)
+                .filter(r => r && r.trim() !== '')
+        )].sort();
+
+        const valorAtual = selectResponsavel.value;
+        selectResponsavel.innerHTML = '<option value="">Todos os Responsáveis</option>' +
+            responsaveisUnicos.map(r => `<option value="${r}">${r}</option>`).join('');
+
+        // Mantém o valor selecionado se ainda existir
+        if (valorAtual && responsaveisUnicos.includes(valorAtual)) {
+            selectResponsavel.value = valorAtual;
+        }
     }
 
     /**
@@ -207,6 +245,11 @@ class DashboardManager {
             processos = processos.filter(p => p.tipoCotacao === this.filtros.tipoProcesso);
         }
 
+        // Filtro de responsável
+        if (this.filtros.responsavel) {
+            processos = processos.filter(p => p.responsavel === this.filtros.responsavel);
+        }
+
         return processos;
     }
 
@@ -235,6 +278,11 @@ class DashboardManager {
             processos = processos.filter(p => p.tipoCotacao === this.filtros.tipoProcesso);
         }
 
+        // Filtro de responsável
+        if (this.filtros.responsavel) {
+            processos = processos.filter(p => p.responsavel === this.filtros.responsavel);
+        }
+
         return processos;
     }
 
@@ -245,6 +293,8 @@ class DashboardManager {
         this.atualizarKPIs();
         this.atualizarGraficos();
         this.renderProcessosCriticos();
+        this.atualizarFiltroMembros();
+        this.renderProdutividadeMensal();
     }
 
     /**
@@ -323,6 +373,9 @@ class DashboardManager {
         if (this.filtros.tipoProcesso) {
             processosBase = processosBase.filter(p => p.tipoCotacao === this.filtros.tipoProcesso);
         }
+        if (this.filtros.responsavel) {
+            processosBase = processosBase.filter(p => p.responsavel === this.filtros.responsavel);
+        }
 
         // Filtra processos com prazo próximo (<=5 dias) ou vencido
         const processosCriticos = processosBase
@@ -338,7 +391,7 @@ class DashboardManager {
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-state-icon">✅</div>
-                    <p class="empty-state-text">Nenhum processo crítico no momento${this.filtros.unidade || this.filtros.tipoProcesso ? ' para os filtros selecionados' : ''}</p>
+                    <p class="empty-state-text">Nenhum processo crítico no momento${this.filtros.unidade || this.filtros.tipoProcesso || this.filtros.responsavel ? ' para os filtros selecionados' : ''}</p>
                 </div>
             `;
             return;
@@ -391,6 +444,206 @@ class DashboardManager {
             }
             element.textContent = Math.round(current);
         }, 16);
+    }
+
+    /**
+     * Configura filtros de produtividade mensal
+     */
+    setupProdutividadeMensal() {
+        const selectAno = document.getElementById('filterAno');
+        const selectMembro = document.getElementById('filterMembro');
+
+        if (!selectAno) return;
+
+        // Popula anos (últimos 3 anos + atual)
+        const anoAtual = new Date().getFullYear();
+        selectAno.innerHTML = '';
+        for (let ano = anoAtual; ano >= anoAtual - 2; ano--) {
+            selectAno.innerHTML += `<option value="${ano}" ${ano === anoAtual ? 'selected' : ''}>${ano}</option>`;
+        }
+
+        // Event listeners
+        selectAno.addEventListener('change', () => this.renderProdutividadeMensal());
+        selectMembro?.addEventListener('change', () => this.renderProdutividadeMensal());
+
+        // Atualiza lista de membros
+        this.atualizarFiltroMembros();
+    }
+
+    /**
+     * Atualiza filtro de membros para produtividade mensal
+     */
+    atualizarFiltroMembros() {
+        const selectMembro = document.getElementById('filterMembro');
+        if (!selectMembro) return;
+
+        const todosProcessos = [...this.processosAndamento, ...this.processosFinalizados];
+        const membrosUnicos = [...new Set(
+            todosProcessos
+                .map(p => p.responsavel)
+                .filter(r => r && r.trim() !== '')
+        )].sort();
+
+        const valorAtual = selectMembro.value;
+        selectMembro.innerHTML = '<option value="">Todos os Membros</option>' +
+            membrosUnicos.map(m => `<option value="${m}">${m}</option>`).join('');
+
+        if (valorAtual && membrosUnicos.includes(valorAtual)) {
+            selectMembro.value = valorAtual;
+        }
+    }
+
+    /**
+     * Renderiza tabela de produtividade mensal
+     */
+    renderProdutividadeMensal() {
+        const tbody = document.getElementById('tbodyProdutividade');
+        if (!tbody) return;
+
+        const anoSelecionado = parseInt(document.getElementById('filterAno')?.value) || new Date().getFullYear();
+        const membroSelecionado = document.getElementById('filterMembro')?.value || '';
+
+        // Coleta todos os processos
+        const todosProcessos = [...this.processosAndamento, ...this.processosFinalizados];
+
+        // Agrupa por responsável
+        const membros = this.agruparPorResponsavel(todosProcessos, anoSelecionado, membroSelecionado);
+
+        if (Object.keys(membros).length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="14" class="cell-empty" style="padding: 2rem; text-align: center;">
+                        Nenhum dado encontrado para ${anoSelecionado}${membroSelecionado ? ` - ${membroSelecionado}` : ''}
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        // Calcula totais por mês (para linha de totais)
+        const totaisMes = Array(12).fill(null).map(() => ({ finalizados: 0, andamento: 0 }));
+        let totalGeralFinalizados = 0;
+        let totalGeralAndamento = 0;
+
+        // Gera linhas da tabela
+        let html = '';
+        Object.entries(membros).sort((a, b) => a[0].localeCompare(b[0])).forEach(([nome, dados]) => {
+            html += `<tr>`;
+            html += `<td class="member-name">${nome}</td>`;
+
+            let totalMembro = { finalizados: 0, andamento: 0 };
+
+            for (let mes = 0; mes < 12; mes++) {
+                const dadosMes = dados.meses[mes] || { finalizados: 0, andamento: 0 };
+                totaisMes[mes].finalizados += dadosMes.finalizados;
+                totaisMes[mes].andamento += dadosMes.andamento;
+                totalMembro.finalizados += dadosMes.finalizados;
+                totalMembro.andamento += dadosMes.andamento;
+
+                if (dadosMes.finalizados === 0 && dadosMes.andamento === 0) {
+                    html += `<td class="cell-empty">-</td>`;
+                } else {
+                    html += `<td class="cell-value">`;
+                    if (dadosMes.finalizados > 0) {
+                        html += `<span class="finalizados">${dadosMes.finalizados}</span>`;
+                    }
+                    if (dadosMes.andamento > 0) {
+                        html += `<span class="andamento">(${dadosMes.andamento})</span>`;
+                    }
+                    html += `</td>`;
+                }
+            }
+
+            totalGeralFinalizados += totalMembro.finalizados;
+            totalGeralAndamento += totalMembro.andamento;
+
+            html += `<td class="total-cell cell-value">`;
+            html += `<span class="finalizados">${totalMembro.finalizados}</span>`;
+            if (totalMembro.andamento > 0) {
+                html += `<span class="andamento">(${totalMembro.andamento})</span>`;
+            }
+            html += `</td>`;
+            html += `</tr>`;
+        });
+
+        // Linha de totais
+        html += `<tr class="row-total">`;
+        html += `<td>TOTAL</td>`;
+        for (let mes = 0; mes < 12; mes++) {
+            if (totaisMes[mes].finalizados === 0 && totaisMes[mes].andamento === 0) {
+                html += `<td>-</td>`;
+            } else {
+                html += `<td class="cell-value">`;
+                html += `<span class="finalizados">${totaisMes[mes].finalizados}</span>`;
+                if (totaisMes[mes].andamento > 0) {
+                    html += `<span class="andamento">(${totaisMes[mes].andamento})</span>`;
+                }
+                html += `</td>`;
+            }
+        }
+        html += `<td class="total-cell cell-value">`;
+        html += `<span class="finalizados">${totalGeralFinalizados}</span>`;
+        if (totalGeralAndamento > 0) {
+            html += `<span class="andamento">(${totalGeralAndamento})</span>`;
+        }
+        html += `</td>`;
+        html += `</tr>`;
+
+        tbody.innerHTML = html;
+    }
+
+    /**
+     * Agrupa processos por responsável e mês
+     */
+    agruparPorResponsavel(processos, ano, membroFiltro) {
+        const membros = {};
+
+        processos.forEach(p => {
+            if (!p.responsavel || p.responsavel.trim() === '') return;
+            if (membroFiltro && p.responsavel !== membroFiltro) return;
+
+            // Determina a data relevante e se está finalizado
+            let dataRelevante = null;
+            let finalizado = false;
+
+            // Verifica se está na lista de finalizados
+            const estaFinalizado = this.processosFinalizados.some(pf => pf.id === p.id);
+
+            if (estaFinalizado) {
+                // Para finalizados, usa data de finalização
+                dataRelevante = p.dataFinalizacao || p.dataEntrega || p.finalizadoEm || p.dataFinal;
+                finalizado = true;
+            } else {
+                // Para em andamento, usa data de início
+                dataRelevante = p.dataInicio;
+                finalizado = false;
+            }
+
+            if (!dataRelevante) return;
+
+            const data = new Date(dataRelevante);
+            if (isNaN(data.getTime())) return;
+            if (data.getFullYear() !== ano) return;
+
+            const mes = data.getMonth();
+            const nome = p.responsavel;
+
+            if (!membros[nome]) {
+                membros[nome] = { meses: {} };
+            }
+
+            if (!membros[nome].meses[mes]) {
+                membros[nome].meses[mes] = { finalizados: 0, andamento: 0 };
+            }
+
+            if (finalizado) {
+                membros[nome].meses[mes].finalizados++;
+            } else {
+                membros[nome].meses[mes].andamento++;
+            }
+        });
+
+        return membros;
     }
 }
 

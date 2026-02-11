@@ -100,6 +100,9 @@
                         <select id="filterTipoProcesso" class="filter-select">
                             <option value="">Todos os Tipos</option>
                         </select>
+                        <select id="filterResponsavel" class="filter-select">
+                            <option value="">Todos os Responsáveis</option>
+                        </select>
                     </div>
                 </div>
 
@@ -178,6 +181,50 @@
                 <div class="alert-section">
                     <h3>⚠️ Processos Críticos (Próximos do Prazo)</h3>
                     <div id="processosCriticos" class="processos-criticos-list"></div>
+                </div>
+
+                <!-- Produtividade Mensal da Equipe -->
+                <div class="productivity-section" id="produtividadeMensal" style="display:block !important; background:#ffffff; border-radius:12px; padding:24px; margin-top:24px; border:1px solid #e2e8f0; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <div class="productivity-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                        <h3 style="font-size:1.25rem; font-weight:600; margin:0; color:#1e293b;">📊 Produtividade Mensal da Equipe</h3>
+                        <div class="productivity-filters">
+                            <select id="filterAno" class="filter-select">
+                                <!-- Populado via JS -->
+                            </select>
+                            <select id="filterMembro" class="filter-select">
+                                <option value="">Todos os Membros</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="productivity-table-container">
+                        <table class="productivity-table" id="tabelaProdutividadeMensal">
+                            <thead>
+                                <tr>
+                                    <th>Membro</th>
+                                    <th>Jan</th>
+                                    <th>Fev</th>
+                                    <th>Mar</th>
+                                    <th>Abr</th>
+                                    <th>Mai</th>
+                                    <th>Jun</th>
+                                    <th>Jul</th>
+                                    <th>Ago</th>
+                                    <th>Set</th>
+                                    <th>Out</th>
+                                    <th>Nov</th>
+                                    <th>Dez</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyProdutividade">
+                                <!-- Populado via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="productivity-legend">
+                        <span class="legend-item"><span class="legend-color bg-success"></span> Finalizados</span>
+                        <span class="legend-item"><span class="legend-color bg-primary"></span> Em andamento</span>
+                    </div>
                 </div>
             </div>
         </section>
