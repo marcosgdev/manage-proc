@@ -10,6 +10,7 @@ import processosManager from './processos.js';
 import equipeManager from './equipe.js';
 import relatoriosManager from './relatorios.js';
 import emailManager from './email.js';
+import backupManager from './backup.js';
 import { hideLoading, showNotification } from './utils.js';
 
 class App {
@@ -60,6 +61,16 @@ class App {
             await emailManager.initialize();
             this.setupEmailConfig();
             this.updateEmailStatus();
+
+            // Inicializa e configura backup
+            backupManager.initialize();
+            this.setupBackup();
+            this.updateBackupStatus();
+
+            // Backup automatico (nao-bloqueante)
+            backupManager.autoBackupIfNeeded().then(() => {
+                this.updateBackupStatus();
+            });
 
             // Mostra seção inicial
             this.showSection('dashboard');
@@ -489,6 +500,164 @@ class App {
         if (btnTestar) {
             btnTestar.disabled = !isConfigured;
         }
+    }
+
+    /**
+     * Configura event handlers para a secao de backup
+     */
+    setupBackup() {
+        const btnManual = document.getElementById('btnBackupManual');
+        const btnListar = document.getElementById('btnListarBackups');
+
+        btnManual?.addEventListener('click', async () => {
+            if (!authManager.isGestor()) {
+                showNotification('Apenas gestores podem realizar backups', 'warning');
+                return;
+            }
+
+            btnManual.disabled = true;
+            btnManual.textContent = 'Realizando backup...';
+
+            const result = await backupManager.createBackup(false);
+
+            if (result.success) {
+                showNotification('Backup realizado com sucesso!', 'success');
+                this.updateBackupStatus();
+            } else {
+                showNotification('Erro ao realizar backup: ' + result.error, 'error');
+            }
+
+            btnManual.disabled = false;
+            btnManual.textContent = 'Realizar Backup Agora';
+        });
+
+        btnListar?.addEventListener('click', async () => {
+            const container = document.getElementById('backupListContainer');
+
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                btnListar.textContent = 'Ocultar Backups';
+                await this.renderBackupList();
+            } else {
+                container.style.display = 'none';
+                btnListar.textContent = 'Ver Backups Disponíveis';
+            }
+        });
+
+        // Event delegation para botoes de download na lista
+        const listContainer = document.getElementById('backupList');
+        listContainer?.addEventListener('click', (e) => {
+            const btnDownload = e.target.closest('.btn-download-backup');
+            if (btnDownload) {
+                const url = btnDownload.dataset.url;
+                const fileName = btnDownload.dataset.filename;
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                showNotification('Download iniciado!', 'info');
+            }
+        });
+    }
+
+    /**
+     * Atualiza informacoes do ultimo backup na interface
+     */
+    async updateBackupStatus() {
+        const statusBadge = document.getElementById('backupStatus');
+        const infoCard = document.getElementById('backupLastInfo');
+        const dateEl = document.getElementById('backupLastDate');
+        const sizeEl = document.getElementById('backupLastSize');
+        const userEl = document.getElementById('backupLastUser');
+
+        const lastBackup = await backupManager.getLastBackupInfo();
+
+        if (lastBackup && statusBadge) {
+            statusBadge.textContent = `Ultimo: ${new Date(lastBackup.createdAt).toLocaleDateString('pt-BR')}`;
+            statusBadge.classList.remove('status-inactive');
+            statusBadge.classList.add('status-active');
+        }
+
+        if (lastBackup && infoCard) {
+            infoCard.style.display = 'block';
+
+            if (dateEl) {
+                dateEl.textContent = new Date(lastBackup.createdAt).toLocaleString('pt-BR');
+            }
+            if (sizeEl) {
+                const backups = await backupManager.listBackups();
+                const latest = backups[0];
+                sizeEl.textContent = latest ? backupManager._formatFileSize(latest.fileSize) : '-';
+            }
+            if (userEl) {
+                userEl.textContent = lastBackup.createdBy || '-';
+            }
+        }
+    }
+
+    /**
+     * Renderiza a lista de backups disponiveis
+     */
+    async renderBackupList() {
+        const container = document.getElementById('backupList');
+        if (!container) return;
+
+        container.innerHTML = '<p style="color:var(--text-tertiary);">Carregando...</p>';
+
+        const backups = await backupManager.listBackups();
+
+        if (backups.length === 0) {
+            container.innerHTML = `
+                <div style="padding:20px; text-align:center;">
+                    <p style="color:var(--text-tertiary);">Nenhum backup encontrado</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="overflow-x:auto;">
+                <table class="data-table" style="min-width:600px;">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Tipo</th>
+                            <th>Tamanho</th>
+                            <th>Realizado por</th>
+                            <th>Acao</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${backups.map(b => `
+                            <tr>
+                                <td>${new Date(b.createdAt).toLocaleString('pt-BR')}</td>
+                                <td>
+                                    <span class="status-badge ${b.automatic ? 'status-inactive' : 'status-active'}">
+                                        ${b.automatic ? 'Automatico' : 'Manual'}
+                                    </span>
+                                </td>
+                                <td>${backupManager._formatFileSize(b.fileSize)}</td>
+                                <td>${b.createdBy}</td>
+                                <td>
+                                    <button class="btn-secondary btn-download-backup"
+                                        data-url="${b.downloadURL}"
+                                        data-filename="${b.fileName}"
+                                        style="padding:4px 12px; font-size:0.85rem;"
+                                        title="Baixar backup">
+                                        Baixar
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
     }
 
     /**

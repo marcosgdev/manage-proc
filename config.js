@@ -72,6 +72,23 @@ export const EMAIL_CONFIG = {
     templateId: '' // Template ID universal (1 template para todas as notificações)
 };
 
+// Configuração de Backup Automático
+export const BACKUP_PATHS = {
+    METADATA: 'backups/metadata',
+    LAST_BACKUP: 'backups/lastBackup'
+};
+
+export const BACKUP_CONFIG = {
+    RETENTION_DAYS: 30,
+    STORAGE_FOLDER: 'backups',
+    PATHS_TO_BACKUP: [
+        'processosAndamento',
+        'processosFinalizados',
+        'funcionarios',
+        'usuarios'
+    ]
+};
+
 // Cores para gráficos (mesma paleta do projeto)
 export const CHART_COLORS = {
     primary: '#2563eb',
@@ -141,6 +158,8 @@ export default {
     firebaseConfig,
     DB_PATHS,
     OPCOES,
+    BACKUP_PATHS,
+    BACKUP_CONFIG,
     CHART_COLORS,
     CHART_OPTIONS,
     MESSAGES

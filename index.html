@@ -375,6 +375,46 @@
                         </small>
                     </div>
                 </div>
+
+                <!-- Backup Automático -->
+                <div class="settings-card gestor-only" style="margin-top: 30px;">
+                    <div class="settings-header">
+                        <h3>Backup Automático de Dados</h3>
+                        <span id="backupStatus" class="status-badge status-inactive">Sem backup</span>
+                    </div>
+                    <p class="settings-description">
+                        Backup diário automático de todos os dados do sistema. Os backups são realizados
+                        automaticamente no primeiro acesso do dia (para gestores) e armazenados no Firebase Storage.
+                        Retenção: últimos 30 dias.
+                    </p>
+
+                    <div id="backupLastInfo" class="backup-info-card" style="display:none;">
+                        <div class="backup-info-row">
+                            <span class="backup-info-label">Último backup:</span>
+                            <span class="backup-info-value" id="backupLastDate">-</span>
+                        </div>
+                        <div class="backup-info-row">
+                            <span class="backup-info-label">Tamanho:</span>
+                            <span class="backup-info-value" id="backupLastSize">-</span>
+                        </div>
+                        <div class="backup-info-row">
+                            <span class="backup-info-label">Realizado por:</span>
+                            <span class="backup-info-value" id="backupLastUser">-</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions">
+                        <button class="btn-primary" id="btnBackupManual">Realizar Backup Agora</button>
+                        <button class="btn-secondary" id="btnListarBackups">Ver Backups Disponíveis</button>
+                    </div>
+
+                    <div id="backupListContainer" style="display:none; margin-top:20px;">
+                        <h4 style="margin-bottom:12px; font-size:1.1rem; color:var(--text-primary);">
+                            Backups Disponíveis
+                        </h4>
+                        <div id="backupList" class="backup-list"></div>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
@@ -533,6 +573,7 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getStorage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
         // Configuração do Firebase (SUBSTITUA COM SUAS CREDENCIAIS)
         const firebaseConfig = {
@@ -548,6 +589,7 @@
         const app = initializeApp(firebaseConfig);
         window.database = getDatabase(app);
         window.auth = getAuth(app);
+        window.storage = getStorage(app);
     </script>
 
     <!-- Scripts da Aplicação -->
@@ -563,6 +605,7 @@
     <script type="module" src="equipe.js"></script>
     <script type="module" src="relatorios.js"></script>
     <script type="module" src="dashboard.js"></script>
+    <script type="module" src="backup.js"></script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
