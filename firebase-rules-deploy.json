@@ -115,6 +115,21 @@
     "listasValidacao": {
       ".read": "auth != null",
       ".write": "auth != null && root.child('usuarios').child(auth.uid).child('role').val() === 'gestor'"
+    },
+
+    "backups": {
+      "data": {
+        ".read": "auth != null && root.child('usuarios').child(auth.uid).child('role').val() === 'gestor'",
+        ".write": "auth != null && root.child('usuarios').child(auth.uid).child('role').val() === 'gestor'"
+      },
+      "metadata": {
+        ".read": "auth != null && root.child('usuarios').child(auth.uid).child('role').val() === 'gestor'",
+        ".write": "auth != null && root.child('usuarios').child(auth.uid).child('role').val() === 'gestor'"
+      },
+      "lastBackup": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('usuarios').child(auth.uid).child('role').val() === 'gestor'"
+      }
     }
   }
 }
