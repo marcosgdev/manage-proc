@@ -74,13 +74,13 @@ export const EMAIL_CONFIG = {
 
 // Configuração de Backup Automático
 export const BACKUP_PATHS = {
+    DATA: 'backups/data',
     METADATA: 'backups/metadata',
     LAST_BACKUP: 'backups/lastBackup'
 };
 
 export const BACKUP_CONFIG = {
     RETENTION_DAYS: 30,
-    STORAGE_FOLDER: 'backups',
     PATHS_TO_BACKUP: [
         'processosAndamento',
         'processosFinalizados',

@@ -1,21 +1,14 @@
 /**
  * Modulo de Backup Automatico
  * Gerencia backups automaticos e manuais do Firebase Realtime Database
- * para o Firebase Storage
+ * Armazena snapshots JSON diretamente no Realtime Database
  */
-
-import {
-    ref as storageRef,
-    uploadString,
-    getDownloadURL,
-    deleteObject,
-    getMetadata
-} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
 import {
     ref,
     get,
-    set
+    set,
+    remove
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 
 import { BACKUP_PATHS, BACKUP_CONFIG } from './config.js';
@@ -23,23 +16,21 @@ import authManager from './auth.js';
 
 class BackupManager {
     constructor() {
-        this.storage = null;
         this.db = null;
         this.initialized = false;
     }
 
     /**
-     * Inicializa o BackupManager com Firebase Storage e Database
+     * Inicializa o BackupManager com Firebase Database
      */
     initialize() {
-        this.storage = window.storage;
         this.db = window.database;
 
-        if (this.storage && this.db) {
+        if (this.db) {
             this.initialized = true;
             console.log('BackupManager inicializado com sucesso');
         } else {
-            console.warn('BackupManager: Firebase Storage ou Database nao disponivel');
+            console.warn('BackupManager: Firebase Database nao disponivel');
         }
     }
 
@@ -55,9 +46,10 @@ class BackupManager {
     }
 
     /**
-     * Formata bytes para leitura humana
+     * Formata tamanho de string para leitura humana
      */
-    _formatFileSize(bytes) {
+    _formatSize(str) {
+        const bytes = new Blob([str]).size;
         if (bytes < 1024) return bytes + ' B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
         return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
@@ -101,7 +93,7 @@ class BackupManager {
     }
 
     /**
-     * Cria um backup completo
+     * Cria um backup completo armazenado no Realtime Database
      * @param {boolean} isAutomatic - Se e um backup automatico ou manual
      */
     async createBackup(isAutomatic = false) {
@@ -117,8 +109,8 @@ class BackupManager {
             // 1. Coleta todos os dados
             const data = await this.collectAllData();
 
-            // 2. Cria o snapshot JSON
-            const snapshot = {
+            // 2. Cria o snapshot
+            const backupData = {
                 metadata: {
                     createdAt: timestamp,
                     createdBy: userEmail,
@@ -130,52 +122,40 @@ class BackupManager {
                 data: data
             };
 
-            const jsonString = JSON.stringify(snapshot, null, 2);
+            // Calcula tamanho aproximado
+            const jsonString = JSON.stringify(backupData);
+            const size = this._formatSize(jsonString);
 
-            // 3. Upload para Firebase Storage
-            const fileName = `backup_${today}_${Date.now()}.json`;
-            const fileRef = storageRef(this.storage, `${BACKUP_CONFIG.STORAGE_FOLDER}/${fileName}`);
+            // 3. Gera chave unica para o backup
+            const backupKey = `backup_${today}_${Date.now()}`;
 
-            await uploadString(fileRef, jsonString, 'raw', {
-                contentType: 'application/json',
-                customMetadata: {
-                    createdBy: userEmail,
-                    date: today,
-                    automatic: String(isAutomatic)
-                }
-            });
+            // 4. Salva snapshot completo no Realtime Database
+            await set(ref(this.db, `${BACKUP_PATHS.DATA}/${backupKey}`), backupData);
 
-            // 4. Obtem URL de download e tamanho
-            const downloadURL = await getDownloadURL(fileRef);
-            const metadata = await getMetadata(fileRef);
-            const fileSize = metadata.size;
-
-            // 5. Salva metadata no Realtime Database
+            // 5. Salva metadata resumido (para listagem rapida sem carregar dados completos)
             const backupMeta = {
-                fileName,
+                key: backupKey,
                 date: today,
                 createdAt: timestamp,
                 createdBy: userEmail,
                 automatic: isAutomatic,
-                fileSize,
-                downloadURL
+                size: size
             };
 
-            const metaKey = fileName.replace('.json', '');
-            await set(ref(this.db, `${BACKUP_PATHS.METADATA}/${metaKey}`), backupMeta);
+            await set(ref(this.db, `${BACKUP_PATHS.METADATA}/${backupKey}`), backupMeta);
 
-            // Atualiza registro do ultimo backup
+            // 6. Atualiza registro do ultimo backup
             await set(ref(this.db, BACKUP_PATHS.LAST_BACKUP), {
                 date: today,
                 createdAt: timestamp,
                 createdBy: userEmail,
-                fileName
+                key: backupKey
             });
 
-            // 6. Limpa backups antigos
+            // 7. Limpa backups antigos
             await this.cleanupOldBackups();
 
-            console.log(`Backup criado com sucesso: ${fileName}`);
+            console.log(`Backup criado com sucesso: ${backupKey}`);
             return { success: true, data: backupMeta };
 
         } catch (error) {
@@ -249,6 +229,35 @@ class BackupManager {
     }
 
     /**
+     * Baixa um backup como arquivo JSON
+     */
+    async downloadBackup(backupKey) {
+        try {
+            const snapshot = await get(ref(this.db, `${BACKUP_PATHS.DATA}/${backupKey}`));
+            if (!snapshot.exists()) {
+                console.error('Backup nao encontrado:', backupKey);
+                return;
+            }
+
+            const backupData = snapshot.val();
+            const jsonString = JSON.stringify(backupData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${backupKey}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Erro ao baixar backup:', error);
+        }
+    }
+
+    /**
      * Remove backups com mais de RETENTION_DAYS dias
      */
     async cleanupOldBackups() {
@@ -261,22 +270,13 @@ class BackupManager {
 
             for (const backup of backups) {
                 if (backup.createdAt < cutoffString) {
-                    // Remove do Firebase Storage
-                    try {
-                        const fileRef = storageRef(
-                            this.storage,
-                            `${BACKUP_CONFIG.STORAGE_FOLDER}/${backup.fileName}`
-                        );
-                        await deleteObject(fileRef);
-                    } catch (storageErr) {
-                        console.warn(`Arquivo ja removido do Storage: ${backup.fileName}`);
-                    }
+                    // Remove dados do backup
+                    await remove(ref(this.db, `${BACKUP_PATHS.DATA}/${backup.key}`));
 
-                    // Remove metadata do Realtime Database
-                    const metaKey = backup.fileName.replace('.json', '');
-                    await set(ref(this.db, `${BACKUP_PATHS.METADATA}/${metaKey}`), null);
+                    // Remove metadata
+                    await remove(ref(this.db, `${BACKUP_PATHS.METADATA}/${backup.key}`));
 
-                    console.log(`Backup antigo removido: ${backup.fileName}`);
+                    console.log(`Backup antigo removido: ${backup.key}`);
                 }
             }
         } catch (error) {

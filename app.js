@@ -546,21 +546,18 @@ class App {
 
         // Event delegation para botoes de download na lista
         const listContainer = document.getElementById('backupList');
-        listContainer?.addEventListener('click', (e) => {
+        listContainer?.addEventListener('click', async (e) => {
             const btnDownload = e.target.closest('.btn-download-backup');
             if (btnDownload) {
-                const url = btnDownload.dataset.url;
-                const fileName = btnDownload.dataset.filename;
+                const backupKey = btnDownload.dataset.key;
+                btnDownload.disabled = true;
+                btnDownload.textContent = 'Baixando...';
 
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = fileName;
-                link.target = '_blank';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
+                await backupManager.downloadBackup(backupKey);
                 showNotification('Download iniciado!', 'info');
+
+                btnDownload.disabled = false;
+                btnDownload.textContent = 'Baixar';
             }
         });
     }
@@ -592,7 +589,7 @@ class App {
             if (sizeEl) {
                 const backups = await backupManager.listBackups();
                 const latest = backups[0];
-                sizeEl.textContent = latest ? backupManager._formatFileSize(latest.fileSize) : '-';
+                sizeEl.textContent = latest ? latest.size : '-';
             }
             if (userEl) {
                 userEl.textContent = lastBackup.createdBy || '-';
@@ -641,12 +638,11 @@ class App {
                                         ${b.automatic ? 'Automatico' : 'Manual'}
                                     </span>
                                 </td>
-                                <td>${backupManager._formatFileSize(b.fileSize)}</td>
+                                <td>${b.size || '-'}</td>
                                 <td>${b.createdBy}</td>
                                 <td>
                                     <button class="btn-secondary btn-download-backup"
-                                        data-url="${b.downloadURL}"
-                                        data-filename="${b.fileName}"
+                                        data-key="${b.key}"
                                         style="padding:4px 12px; font-size:0.85rem;"
                                         title="Baixar backup">
                                         Baixar
