@@ -43,38 +43,6 @@ function clearError() {
 }
 
 /**
- * Alterna entre modo Login e Cadastro
- */
-function setMode(mode) {
-    const formLogin = document.getElementById('formLogin');
-    const formSignup = document.getElementById('formSignup');
-    const title = document.getElementById('loginTitle');
-    const linkCadastro = document.getElementById('linkCadastro');
-    const linkLogin = document.getElementById('linkLogin');
-
-    clearError();
-
-    if (mode === 'login') {
-        formLogin.style.display = 'block';
-        formSignup.style.display = 'none';
-        title.textContent = 'Faça seu Login';
-        if (linkCadastro) linkCadastro.parentElement.innerHTML =
-            'Não tem conta? <a id="linkCadastro">Cadastre-se</a>';
-        // Re-bind após innerHTML
-        document.getElementById('linkCadastro')?.addEventListener('click', () => setMode('signup'));
-    } else {
-        formLogin.style.display = 'none';
-        formSignup.style.display = 'block';
-        title.textContent = 'Criar Conta';
-        if (linkLogin || linkCadastro) {
-            const container = (linkLogin || linkCadastro).parentElement;
-            container.innerHTML = 'Já tem conta? <a id="linkLogin">Faça login</a>';
-            document.getElementById('linkLogin')?.addEventListener('click', () => setMode('login'));
-        }
-    }
-}
-
-/**
  * Monta os event listeners dos formulários
  */
 function setupForms() {
@@ -91,23 +59,6 @@ function setupForms() {
         }
         // Se sucesso, onAuthStateChanged dispara e tryStartApp é chamado pelo callback
     });
-
-    // Formulário de Cadastro
-    document.getElementById('formSignup')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        clearError();
-        const email = document.getElementById('signupEmail').value.trim();
-        const senha = document.getElementById('signupSenha').value;
-
-        const resultado = await authManager.signup(email, senha);
-        if (!resultado.success) {
-            showError(resultado.error);
-        }
-        // Se sucesso, onAuthStateChanged dispara e tryStartApp é chamado pelo callback
-    });
-
-    // Link para trocar de modo
-    document.getElementById('linkCadastro')?.addEventListener('click', () => setMode('signup'));
 }
 
 /**

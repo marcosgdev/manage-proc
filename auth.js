@@ -5,7 +5,6 @@
 
 import {
     signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
     onAuthStateChanged,
     signOut,
     updatePassword
@@ -96,31 +95,11 @@ class AuthManager {
     }
 
     /**
-     * Cadastro com email e senha.
-     * Primeiro usuário registrado automaticamente vira gestor.
+     * Cadastro público desabilitado. Novos usuários devem ser criados
+     * diretamente no Firebase Console (Authentication) por um Gestor.
      */
-    async signup(email, senha) {
-        try {
-            const { user } = await createUserWithEmailAndPassword(this.auth, email, senha);
-
-            // Verifica se há outros usuários no banco
-            const allUsers = await get(ref(this.db, DB_PATHS.USUARIOS));
-            const role = allUsers.exists() ? 'usuario' : 'gestor';
-
-            await set(ref(this.db, `${DB_PATHS.USUARIOS}/${user.uid}`), {
-                email: email,
-                nome: email.split('@')[0],
-                role: role,
-                criadoEm: new Date().toISOString()
-            });
-
-            this.currentUser = user;
-            this.currentRole = role;
-
-            return { success: true, role };
-        } catch (error) {
-            return { success: false, error: this.getErrorMessage(error.code) };
-        }
+    async signup() {
+        return { success: false, error: 'Cadastro de novos usuários está desabilitado.' };
     }
 
     /**
